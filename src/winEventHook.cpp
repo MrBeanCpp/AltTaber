@@ -20,10 +20,18 @@ bool setWinEventHook(WinEventCallback _callback)
         return false;
     }
 
-    ::callback = _callback;
+    ::callback = std::move(_callback);
 
     // WINEVENT_OUTOFCONTEXT：表示回调函数是在调用线程的上下文中调用的，而不是在生成事件的线程的上下文中。这种方式不需要DLL模块句柄（hmodWinEventProc 设置为 NULL）
-    handler = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, WinEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+    handler = SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND,
+            EVENT_SYSTEM_FOREGROUND,
+            nullptr,
+            WinEventProc,
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
+            );
 
     qDebug() << "Set WinEventHook.";
 

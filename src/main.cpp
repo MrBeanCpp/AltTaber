@@ -5,6 +5,10 @@
 #include <QTimer>
 #include "../header/widget.h"
 #include "winEventHook.h"
+#include "utils/Util.h"
+#include <QKeyEvent>
+
+Widget *widget = nullptr;
 
 LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -17,7 +21,15 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
             if (pKeyBoard->vkCode == VK_TAB && isAltPressed) {
                 qDebug() << "Alt+Tab detected!";
-//                emit altTabPressed();
+                if (widget) {
+                    if (!widget->isForeground()) {
+                        widget->forceShow();
+                    } else {
+                        // 转发Alt+Tab给Widget
+                        auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier);
+                        QApplication::postEvent(widget, tabDownEvent); // async
+                    }
+                }
                 return 1; // 阻止事件传递
             }
         }
@@ -32,13 +44,13 @@ int main(int argc, char *argv[]) {
     if (hook == nullptr) {
         qDebug() << "Failed to install hook";
     }
-    QObject::connect(&a, &QApplication::aboutToQuit, [&hook](){
+    QObject::connect(&a, &QApplication::aboutToQuit, [hook](){
         UnhookWindowsHookEx(hook);
         unhookWinEvent();
         qDebug() << "Hook uninstalled";
     });
 
-    auto* widget = new Widget;
+    widget = new Widget;
     setWinEventHook([&](DWORD event, HWND hwnd) {
         // 某些情况下，Hook拦截不到Alt+Tab（如VMware获取焦点且虚拟机开启时，即便focus在标题栏上）
         // （GPT建议RegisterRawInputDevices，不知道有没有效果，感觉比较危险）
@@ -49,23 +61,21 @@ int main(int argc, char *argv[]) {
             // 使用Alt+TAB呼出任务切换窗口时，会触发两次EVENT_SYSTEM_FOREGROUND事件
             // 第二次是在目标窗口已经切换到前台后触发的，非常诡异
             // 可以用 GetForegroundWindow() || isAltPressed 来二次确认
-            wchar_t className[256];
-            GetClassNameW(hwnd, className, 256);
-            qDebug() << "Class Name:" << QString::fromWCharArray(className);
+            auto className = Util::getClassName(hwnd);
+            qDebug() << "Class Name:" << className;
 
             // ForegroundStaging貌似是辅助过渡动画
-            if (wcscmp(className, L"ForegroundStaging") == 0 || wcscmp(className, L"XamlExplorerHostIslandWindow") == 0) { // 任务切换窗口
+            if (className == "ForegroundStaging" || className == "XamlExplorerHostIslandWindow") { // 任务切换窗口
                 qDebug() << "任务切换 detected!";
                 int t = 0;
                 do {
-                    Sleep(10);
                     // 貌似如果不是本进程第一个窗口的话，这招无法前置，比如你在这里new Widget
-                    widget->showMinimized();
-                    widget->showNormal();
+                    widget->forceShow();
                     t++;
                     if (t > 1)
                         qDebug() << "Retry" << t;
-                } while (GetForegroundWindow() != (HWND)widget->winId() && t < 5);
+                    Sleep(10);
+                } while (!widget->isForeground() && t < 5);
             }
         }
     });
