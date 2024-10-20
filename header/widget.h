@@ -1,5 +1,4 @@
-﻿
-#ifndef WIN_SWITCHER_WIDGET_H
+﻿#ifndef WIN_SWITCHER_WIDGET_H
 #define WIN_SWITCHER_WIDGET_H
 
 #include <QWidget>

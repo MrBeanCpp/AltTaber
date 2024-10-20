@@ -21,11 +21,23 @@ add_executable(Win_Switcher src/main.cpp
         header/widget.h
         ui/widget.ui
         src/winEventHook.cpp
-        header/winEventHook.h)
+        header/winEventHook.h
+        src/utils/Util.cpp
+        header/utils/Util.h)
 target_link_libraries(Win_Switcher
         Qt5::Core
         Qt5::Gui
         Qt5::Widgets
+)
+
+target_link_libraries(${PROJECT_NAME}
+        Dwmapi
+)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        QT_DEPRECATED_WARNINGS
+        UNICODE # for Windows API，使用W版本
+        _UNICODE # for C/C++ 标准库
 )
 
 if (MSVC)
