@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include <QString>
+#include <dwmapi.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd);
@@ -11,6 +12,7 @@ namespace Util {
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
+    bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute =  DWMWCP_ROUND);
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

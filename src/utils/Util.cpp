@@ -140,4 +140,15 @@ namespace Util {
         }
         return list;
     }
+    /// 设置窗口圆角 原来这么方便嘛！ 为什么Qt搜不到！
+    bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute) {
+        // https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L1275
+        // https://github.com/DinoChan/WindowChromeApplyRoundedCorners
+        HRESULT hr = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &pvAttribute, sizeof(pvAttribute));
+        if (FAILED(hr)) {
+            qWarning() << "Failed to set rounded corners for window:" << hr;
+            return false;
+        }
+        return true;
+    }
 } // Util

@@ -16,6 +16,8 @@ Widget::Widget(QWidget *parent) :
     setWindowFlag(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);//设置窗口背景透明
     setWindowTitle("Windows Switcher");
+
+    Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
