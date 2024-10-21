@@ -49,6 +49,13 @@ bool Widget::forceShow() {
     showNormal();
     return GetForegroundWindow() == (HWND)winId();
 }
+
+void Widget::keyReleaseEvent(QKeyEvent *event) {
+    if (event->key() == Qt::Key_Alt) {
+        hide();
+    }
+    QWidget::keyReleaseEvent(event);
+}
 void Widget::paintEvent(QPaintEvent* event)//不绘制会导致鼠标穿透背景
 {
     Q_UNUSED(event);
