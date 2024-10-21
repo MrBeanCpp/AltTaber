@@ -23,7 +23,8 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 qDebug() << "Alt+Tab detected!";
                 if (widget) {
                     if (!widget->isForeground()) {
-                        widget->forceShow();
+                        // 异步，防止阻塞；超过1s会导致被系统强制绕过，传递给下一个钩子
+                        QMetaObject::invokeMethod(widget, "forceShow", Qt::QueuedConnection);
                     } else {
                         // 转发Alt+Tab给Widget
                         auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier);

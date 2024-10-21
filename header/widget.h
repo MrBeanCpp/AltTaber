@@ -16,7 +16,7 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 public:
     explicit Widget(QWidget *parent = nullptr);
-    bool forceShow();
+    Q_INVOKABLE bool forceShow();
     HWND hWnd() { return (HWND)winId(); }
     bool isForeground() { return GetForegroundWindow() == hWnd(); }
     ~Widget() override;
