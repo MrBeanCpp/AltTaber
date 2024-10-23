@@ -14,6 +14,7 @@
 Widget::Widget(QWidget *parent) :
         QWidget(parent), ui(new Ui::Widget) {
     ui->setupUi(this);
+    lw = ui->listWidget;
     setWindowFlag(Qt::WindowStaysOnTopHint);
     setWindowFlag(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);//设置窗口背景透明
@@ -23,12 +24,12 @@ Widget::Widget(QWidget *parent) :
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
 //    ui->listWidget->setResizeMode(QListView::Adjust);
-    ui->listWidget->setViewMode(QListView::IconMode);
-    ui->listWidget->setMovement(QListView::Static);
-    ui->listWidget->setFlow(QListView::LeftToRight);
-    ui->listWidget->setWrapping(false);
-    ui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    ui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    lw->setViewMode(QListView::IconMode);
+    lw->setMovement(QListView::Static);
+    lw->setFlow(QListView::LeftToRight);
+    lw->setWrapping(false);
+    lw->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    lw->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
         if (focusWindow == nullptr) {
@@ -66,10 +67,10 @@ void Widget::showEvent(QShowEvent *event) {
     if (!this->isMinimized()) {
         auto list = Util::listValidWindows();
         QFileIconProvider iconProvider;
-        ui->listWidget->clear();
-        ui->listWidget->setFixedHeight(80);
-        ui->listWidget->setIconSize(QSize(64, 64));
-        ui->listWidget->setGridSize(QSize(80, 70));
+        lw->clear();
+        lw->setFixedHeight(70);
+        lw->setIconSize(QSize(64, 64));
+        lw->setGridSize(QSize(80, 70));
         for (auto hwnd : list) {
             auto path = Util::getProcessExePath(hwnd);
             qDebug() << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path;
@@ -84,19 +85,19 @@ void Widget::showEvent(QShowEvent *event) {
             // 但是我无法得知真实图标大小，无法进行缩放，只能作罢
             auto item = new QListWidgetItem(QIcon(pixmap), "");
 //        item->setData(Qt::UserRole, QVariant::fromValue(hwnd));
-            ui->listWidget->addItem(item);
+            lw->addItem(item);
         }
-        auto width = ui->listWidget->gridSize().width() * ui->listWidget->count() + 10;
-        ui->listWidget->setFixedWidth(width);
+        auto width = lw->gridSize().width() * lw->count() + 10;
+        lw->setFixedWidth(width);
         adjustSize();
         // move to center
-        auto screen = QApplication::primaryScreen();
-        auto screenRect = screen->availableGeometry();
-        auto widgetRect = this->geometry();
+        auto screen = QApplication::primaryScreen(); // maybe nullptr
+        auto screenRect = screen->geometry();
+        auto widgetRect = QRect(QPoint(), QSize(width, lw->height()));
         widgetRect.moveCenter(screenRect.center());
         this->setGeometry(widgetRect);
 
-        setFixedHeight(ui->listWidget->height());
+        setFixedHeight(lw->height());
     }
     QWidget::showEvent(event);
 }

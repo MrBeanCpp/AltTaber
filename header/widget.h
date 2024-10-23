@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <Windows.h>
+#include <QListWidget>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -28,6 +29,7 @@ public:
 
 private:
     Ui::Widget *ui;
+    QListWidget* lw = nullptr;
 };
 
 
