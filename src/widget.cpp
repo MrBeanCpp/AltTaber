@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QWindow>
 #include <QKeyEvent>
+#include <QFileIconProvider>
+#include <QScreen>
 #include "utils/setWindowBlur.h"
 #include <QPainter>
 #include <QPen>
@@ -20,6 +22,14 @@ Widget::Widget(QWidget *parent) :
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
+//    ui->listWidget->setResizeMode(QListView::Adjust);
+    ui->listWidget->setViewMode(QListView::IconMode);
+    ui->listWidget->setMovement(QListView::Static);
+    ui->listWidget->setFlow(QListView::LeftToRight);
+    ui->listWidget->setWrapping(false);
+    ui->listWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->listWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
         if (focusWindow == nullptr) {
             hide();
@@ -28,11 +38,6 @@ Widget::Widget(QWidget *parent) :
             qDebug() << "Focus window changed to" << focusWindow->title();
         }
     });
-
-    auto list = Util::listValidWindows();
-    for (auto hwnd : list) {
-        qDebug() << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << Util::getProcessExePath(hwnd);
-    }
 }
 
 Widget::~Widget() {
@@ -56,7 +61,47 @@ void Widget::keyReleaseEvent(QKeyEvent *event) {
     }
     QWidget::keyReleaseEvent(event);
 }
-void Widget::paintEvent(QPaintEvent* event)//不绘制会导致鼠标穿透背景
+
+void Widget::showEvent(QShowEvent *event) {
+    if (!this->isMinimized()) {
+        auto list = Util::listValidWindows();
+        QFileIconProvider iconProvider;
+        ui->listWidget->clear();
+        ui->listWidget->setFixedHeight(80);
+        ui->listWidget->setIconSize(QSize(64, 64));
+        ui->listWidget->setGridSize(QSize(80, 70));
+        for (auto hwnd : list) {
+            auto path = Util::getProcessExePath(hwnd);
+            qDebug() << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path;
+//            auto icon = iconProvider.icon(QFileInfo(path));
+            auto icon = Util::getJumboIcon(path);
+            auto pixmap = icon.pixmap(64,64);
+            // ExtractIconEx 最大返回32x32
+            // IShellItemImageFactory::GetImage 获取的图像有锯齿（64x64），而256x256倒是好一点，但是若exe没有这么大的图标，缩放后还是会很小（中心）
+            // SHGetFileInfo 获取的图标最大只能32x32, 但是可以通过Index + SHGetImageList获取更大的图标(Jumbo)，这就是QFileIconProvider的实现
+            // 没办法，对于不包含大图标的exe，周围会被填充透明，导致真实图标很小（例如，[Follower]获取64x64的图标，但只有左上角有8x8图标，其余透明）
+            // 更诡异的是，48x48的Icon，Follower是可以正常获取的，比64x64的实际Icon尺寸还要大，倒行逆施
+            // 但是我无法得知真实图标大小，无法进行缩放，只能作罢
+            auto item = new QListWidgetItem(QIcon(pixmap), "");
+//        item->setData(Qt::UserRole, QVariant::fromValue(hwnd));
+            ui->listWidget->addItem(item);
+        }
+        auto width = ui->listWidget->gridSize().width() * ui->listWidget->count() + 10;
+        ui->listWidget->setFixedWidth(width);
+        adjustSize();
+        // move to center
+        auto screen = QApplication::primaryScreen();
+        auto screenRect = screen->availableGeometry();
+        auto widgetRect = this->geometry();
+        widgetRect.moveCenter(screenRect.center());
+        this->setGeometry(widgetRect);
+
+        setFixedHeight(ui->listWidget->height());
+    }
+    QWidget::showEvent(event);
+}
+
+void Widget::paintEvent(QPaintEvent* event) //不绘制会导致鼠标穿透背景
 {
     Q_UNUSED(event);
     QPainter painter(this);

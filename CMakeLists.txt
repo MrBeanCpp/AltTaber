@@ -14,6 +14,7 @@ find_package(Qt5 COMPONENTS
         Core
         Gui
         Widgets
+        WinExtras
         REQUIRED)
 
 add_executable(Win_Switcher src/main.cpp
@@ -30,10 +31,12 @@ target_link_libraries(Win_Switcher
         Qt5::Core
         Qt5::Gui
         Qt5::Widgets
+        Qt5::WinExtras
 )
 
 target_link_libraries(${PROJECT_NAME}
         Dwmapi
+        Comctl32
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

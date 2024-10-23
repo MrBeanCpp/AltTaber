@@ -1,9 +1,12 @@
 ﻿#include <QList>
 #include "utils/Util.h"
-#include <dwmapi.h>
 #include <QDebug>
 #include <psapi.h>
 #include <QFileInfo>
+#include <QDir>
+#include <QtWin>
+#include <commoncontrols.h>
+#include <ShObjIdl_core.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -140,10 +143,40 @@ namespace Util {
         }
         return list;
     }
+
+    /// Get 256x256 icon
+    // 不用Index，直接用SHGetFileInfo获取图标的话，最大只能32x32
+    // 对于QFileIconProvider的优势是可以多线程
+    // ref: https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L333
+    // ref: https://blog.csdn.net/ssss_sj/article/details/9786403
+    QIcon getJumboIcon(const QString& filePath) {
+        SHFILEINFOW sfi = {nullptr};
+        // Get the icon index using SHGetFileInfo
+        SHGetFileInfo(filePath.toStdWString().c_str(), 0, &sfi, sizeof(SHFILEINFOW), SHGFI_SYSICONINDEX);
+
+        // 48x48 icons, use SHIL_EXTRALARGE
+        // 256x256 icons (after Vista), use SHIL_JUMBO
+        IImageList* imageList;
+        HRESULT hResult = SHGetImageList(SHIL_JUMBO, IID_IImageList, (void**)&imageList);
+
+        QIcon icon;
+        if (hResult == S_OK) {
+            HICON hIcon;
+            hResult = imageList->GetIcon(sfi.iIcon, ILD_TRANSPARENT, &hIcon);
+
+            if (hResult == S_OK) {
+                icon = QtWin::fromHICON(hIcon);
+                DestroyIcon(sfi.hIcon);
+            }
+        }
+        imageList->Release();
+        return icon;
+    }
+
     /// 设置窗口圆角 原来这么方便嘛！ 为什么Qt搜不到！
+    // https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L1275
+    // https://github.com/DinoChan/WindowChromeApplyRoundedCorners
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute) {
-        // https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L1275
-        // https://github.com/DinoChan/WindowChromeApplyRoundedCorners
         HRESULT hr = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &pvAttribute, sizeof(pvAttribute));
         if (FAILED(hr)) {
             qWarning() << "Failed to set rounded corners for window:" << hr;

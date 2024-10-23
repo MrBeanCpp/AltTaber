@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include <QString>
+#include <QIcon>
 #include <dwmapi.h>
 
 namespace Util {
@@ -12,6 +13,7 @@ namespace Util {
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
+    QIcon getJumboIcon(const QString& filePath);
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute =  DWMWCP_ROUND);
 } // Util
 

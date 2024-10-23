@@ -14,7 +14,11 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
 
     void keyReleaseEvent(QKeyEvent *event) override;
+
+    void showEvent(QShowEvent *event) override;
+
     void paintEvent(QPaintEvent *event) override;
+
 public:
     explicit Widget(QWidget *parent = nullptr);
     Q_INVOKABLE bool forceShow();
