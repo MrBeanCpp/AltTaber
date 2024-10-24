@@ -110,7 +110,7 @@ namespace Util {
         auto winList = Util::enumWindows();
         for (auto hwnd : winList) {
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
-            if (Util::getClassName(hwnd) == "ApplicationFrameWindow") { // UWP的父窗口
+            if (Util::getClassName(hwnd) == UwpAppFrameWindowClass) { // UWP的父窗口
                 const auto childList = Util::enumChildWindows(hwnd);
                 hwnd = nullptr;
                 for (HWND child : childList) {
@@ -127,7 +127,7 @@ namespace Util {
 
             auto className = Util::getClassName(hwnd);
             // 进一步对UWP进行过滤（根据路径）
-            if (className == "Windows.UI.Core.CoreWindow") {
+            if (className == UwpCoreWindowClass) {
                 auto path = Util::getProcessExePath(hwnd);
                 QFileInfo fileInfo(path);
                 if (BlackList_ExePath.contains(path)
@@ -142,6 +142,21 @@ namespace Util {
             }
         }
         return list;
+    }
+
+    /// 对Core子窗口进行hwnd之类的操作之后，就会脱离原本的ApplicationFrameWindow，所以很难通过关联性去查找了<br>
+    /// 这种情况下，通过标题和类名比较好<br>
+    /// 这里需要查找Frame窗口的原因是，restore等操作只能对其生效！
+    HWND getUwpFrameWindow(HWND hwnd) {
+        auto className = Util::getClassName(hwnd);
+        auto title = Util::getWindowTitle(hwnd);
+        if (className == UwpCoreWindowClass) {
+            if (auto res = FindWindowW(LPCWSTR(UwpAppFrameWindowClass.utf16()), LPCWSTR(title.utf16())))
+                return res;
+            qWarning() << "Failed to find ApplicationFrameWindow of " << title << hwnd;
+            return nullptr;
+        } else
+            return hwnd;
     }
 
     /// Get 256x256 icon

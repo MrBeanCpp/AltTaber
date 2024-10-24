@@ -5,6 +5,25 @@
 #include <Windows.h>
 #include <QListWidget>
 
+struct WindowGroup;
+struct WindowInfo {
+    QString title;
+    QString className;
+    HWND hwnd = nullptr;
+};
+Q_DECLARE_METATYPE(WindowInfo) // for QVariant
+struct WindowGroup {
+    WindowGroup() = default;
+    void addWindow(const WindowInfo& window) {
+        windows.append(window);
+    }
+
+    QString exePath;
+    QIcon icon;
+    QList<WindowInfo> windows;
+};
+Q_DECLARE_METATYPE(WindowGroup) // for QVariant
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
 QT_END_NAMESPACE
@@ -13,23 +32,25 @@ class Widget : public QWidget {
 Q_OBJECT
 protected:
     void keyPressEvent(QKeyEvent *event) override;
-
     void keyReleaseEvent(QKeyEvent *event) override;
-
-    void showEvent(QShowEvent *event) override;
-
     void paintEvent(QPaintEvent *event) override;
 
 public:
     explicit Widget(QWidget *parent = nullptr);
-    Q_INVOKABLE bool forceShow();
+    Q_INVOKABLE bool requestShow();
+    void notifyForegroundChanged(HWND hwnd);
     HWND hWnd() { return (HWND)winId(); }
     bool isForeground() { return GetForegroundWindow() == hWnd(); }
     ~Widget() override;
 
 private:
+    bool forceShow();
+
+private:
     Ui::Widget *ui;
     QListWidget* lw = nullptr;
+    // exePath -> (HWND, time)
+    QHash<QString, QPair<HWND, QDateTime>> winActiveOrder;
 };
 
 
