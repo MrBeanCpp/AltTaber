@@ -95,11 +95,12 @@ void Widget::showEvent(QShowEvent *event) {
 
             // move to center
             auto screen = QApplication::primaryScreen(); // maybe nullptr
-            auto screenRect = screen->geometry();
-            auto widgetRect = lw->rect();
-            widgetRect.moveCenter(screenRect.center());
-            this->setGeometry(widgetRect);
-            setFixedHeight(lw->height());
+            auto lwRect = lw->rect();
+            auto thisRect = lwRect.marginsAdded({20, 20, 20, 20});
+            thisRect.moveCenter(screen->geometry().center());
+            this->setGeometry(thisRect); // global pos
+            lwRect.moveCenter(this->rect().center()); // local pos
+            lw->setGeometry(lwRect);
         } else {
             // TODO no item, hide
         }
