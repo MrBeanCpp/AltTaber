@@ -19,7 +19,7 @@ Widget::Widget(QWidget *parent) :
     setWindowFlag(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);//设置窗口背景透明
     QtWin::taskbarDeleteTab(this); //删除任务栏图标
-    setWindowTitle("Windows Switcher");
+    setWindowTitle("AltTaber");
 
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
@@ -58,7 +58,7 @@ void Widget::keyPressEvent(QKeyEvent *event) {
 bool Widget::forceShow() {
     showMinimized();
     showNormal();
-    return GetForegroundWindow() == (HWND)winId();
+    return GetForegroundWindow() == this->hWnd();
 }
 
 void Widget::keyReleaseEvent(QKeyEvent *event) {
@@ -95,10 +95,11 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 /// 通知前台窗口变化
 void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对应的问题！
     if (hwnd == this->hWnd()) return;
+    if (!Util::isWindowAcceptable(hwnd)) return;
     auto path = Util::getProcessExePath(hwnd);
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path] = {hwnd, QDateTime::currentDateTime()}; // TODO 需要记录同组窗口之间的顺序
-    qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
+    qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path;
 }
 
 bool Widget::requestShow() {
@@ -132,10 +133,17 @@ bool Widget::requestShow() {
         lw->addItem(item);
     }
     if (lw->count() >= 2) {
-        auto foreWinPath = Util::getProcessExePath(GetForegroundWindow());
+        auto foreWin = GetForegroundWindow();
+        bool isFirstItemForeground = false;
+        for (auto& info : winGroupList.at(0).windows) {
+            if (info.hwnd == foreWin) {
+                isFirstItemForeground = true;
+                break;
+            }
+        }
         // 如果第一个item是前台窗口，就选中第二个
         // 因为有些情况：选中桌面 并不会产生一个item
-        lw->setCurrentRow(foreWinPath == winGroupList.at(0).exePath ? 1 : 0);
+        lw->setCurrentRow(isFirstItemForeground ? 1 : 0);
     } else if (lw->count() == 1) {
         lw->setCurrentRow(0);
     }

@@ -1,6 +1,4 @@
 ﻿#include <QApplication>
-#include <QPushButton>
-#include <QDebug>
 #include <windows.h>
 #include <QTimer>
 #include "../header/widget.h"

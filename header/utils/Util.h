@@ -11,6 +11,7 @@ namespace Util {
     QString getClassName(HWND hwnd);
     QString getProcessExePath(HWND hwnd);
     void switchToWindow(HWND hwnd);
+    bool isWindowAcceptable(HWND hwnd);
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
@@ -21,8 +22,8 @@ namespace Util {
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute = DWMWCP_ROUND);
     bool isKeyPressed(int vkey);
 
-    inline QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
-    inline QString AppFrameWindowClass = "ApplicationFrameWindow";
+    inline const QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
+    inline const QString AppFrameWindowClass = "ApplicationFrameWindow";
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

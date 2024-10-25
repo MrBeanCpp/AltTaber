@@ -34,8 +34,7 @@ namespace Util {
         return rt == S_OK && isCloaked;
     }
 
-    QString getProcessExePath(HWND hwnd)
-    {
+    QString getProcessExePath(HWND hwnd) {
         DWORD processId = 0;
         GetWindowThreadProcessId(hwnd, &processId);
 
@@ -71,23 +70,37 @@ namespace Util {
         SetForegroundWindow(hwnd);
     }
 
-    BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+    /// filter HWND by some rules
+    bool isWindowAcceptable(HWND hwnd) {
         static const QStringList BlackList_ClassName = {
-            "Progman",
+                "Progman",
 //            "Windows.UI.Core.CoreWindow", // UWP
-            "CEF-OSC-WIDGET"
+                "CEF-OSC-WIDGET",
+                "WorkerW", // explorer.exe
+                "Shell_TrayWnd" // explorer.exe
         };
-
+        static const QStringList BlackList_FileName = { // TODO by user from config
+                "Follower.exe",
+                "QQ Follower.exe"
+        };
         LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
 
         if (IsWindowVisible(hwnd)
-        && !isWindowCloaked(hwnd)
-        && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker
-        && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性
-//        && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
-        && !BlackList_ClassName.contains(getClassName(hwnd))
-        && GetWindowTextLength(hwnd) > 0
-        ) {
+            && !isWindowCloaked(hwnd)
+            && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker
+            && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性
+//            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
+            && GetWindowTextLength(hwnd) > 0
+            && !BlackList_ClassName.contains(getClassName(hwnd))
+            && !BlackList_FileName.contains(QFileInfo(getProcessExePath(hwnd)).fileName())
+            ) {
+            return true;
+        }
+        return false;
+    }
+
+    BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+        if (isWindowAcceptable(hwnd)) {
             auto *windowList = reinterpret_cast<QList<HWND> *>(lParam);
             windowList->append(hwnd);
         }
@@ -122,17 +135,8 @@ namespace Util {
                 "HxOutlook.exe",
                 "Video.UI.exe"
         };
-        static const QStringList BlackList_FileName = { // TODO by user from config
-                "Follower.exe",
-                "QQ Follower.exe"
-        };
         auto winList = Util::enumWindows();
         for (auto hwnd : winList) {
-            auto path = Util::getProcessExePath(hwnd);
-            auto fileName = QFileInfo(path).fileName();
-            if (BlackList_FileName.contains(fileName))
-                continue;
-
             auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
             if (className == AppFrameWindowClass) { // UWP的父窗口
@@ -150,6 +154,8 @@ namespace Util {
                 // 如果子窗口都是无标题，说明是奇怪窗口
             }
 
+            auto path = Util::getProcessExePath(hwnd);
+            auto fileName = QFileInfo(path).fileName();
             // 进一步对UWP进行过滤（根据路径）
             if (className == AppCoreWindowClass) {
                 if (BlackList_App_ExePath.contains(path)
