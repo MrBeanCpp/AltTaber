@@ -312,4 +312,9 @@ namespace Util {
         }
         return true;
     }
+
+    /// Convenience function of `GetAsyncKeyState`
+    bool isKeyPressed(int vkey) {
+        return GetAsyncKeyState(vkey) & 0x8000;
+    }
 } // Util

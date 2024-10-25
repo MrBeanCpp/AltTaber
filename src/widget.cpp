@@ -45,9 +45,12 @@ Widget::~Widget() {
 
 void Widget::keyPressEvent(QKeyEvent *event) {
     auto key = event->key();
-    if (key == Qt::Key_Tab) { // switch to next
+    if (key == Qt::Key_Tab) { // switch to next or prev
         auto i = lw->currentRow();
-        lw->setCurrentRow((i + 1) % lw->count());
+        bool isShiftPressed = (event->modifiers() & Qt::ShiftModifier);
+        // weird formula, but works (hhh)
+        auto index = (i - (2 * isShiftPressed - 1) + lw->count()) % lw->count();
+        lw->setCurrentRow(index);
     }
     QWidget::keyPressEvent(event);
 }

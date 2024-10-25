@@ -15,7 +15,14 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     if (nCode == HC_ACTION) {
         if (wParam == WM_SYSKEYDOWN) { // Alt & [Alt按下时的Tab]属于SysKey
             auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            bool isAltPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+            // inner: `GetAsyncKeyState`, doc warns this usage, but it seems to work fine(?)
+            // If it's broken, maybe we can record Modifier manually in every callback
+            /* Note from Docs:
+             * When this callback function is called in response to a change in the state of a key,
+             * the callback function is called before the asynchronous state of the key is updated.
+             * Consequently, the asynchronous state of the key cannot be determined by calling GetAsyncKeyState from within the callback function.
+             * */
+            bool isAltPressed = Util::isKeyPressed(VK_MENU);
 
             if (pKeyBoard->vkCode == VK_TAB && isAltPressed) {
                 qDebug() << "Alt+Tab detected!";
@@ -25,7 +32,8 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                         QMetaObject::invokeMethod(winSwitcher, "requestShow", Qt::QueuedConnection);
                     } else {
                         // 转发Alt+Tab给Widget
-                        auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier);
+                        auto shiftModifier = Util::isKeyPressed(VK_SHIFT) ? Qt::ShiftModifier : Qt::NoModifier;
+                        auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier | shiftModifier);
                         QApplication::postEvent(winSwitcher, tabDownEvent); // async
                     }
                 }

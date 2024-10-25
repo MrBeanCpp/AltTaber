@@ -19,6 +19,7 @@ namespace Util {
     QIcon getAppIcon(const QString& path);
     QIcon getCachedIcon(const QString& path);
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute = DWMWCP_ROUND);
+    bool isKeyPressed(int vkey);
 
     inline QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
     inline QString AppFrameWindowClass = "ApplicationFrameWindow";
