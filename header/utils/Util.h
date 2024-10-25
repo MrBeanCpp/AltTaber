@@ -10,6 +10,7 @@ namespace Util {
     QString getWindowTitle(HWND hwnd);
     QString getClassName(HWND hwnd);
     QString getProcessExePath(HWND hwnd);
+    void switchToWindow(HWND hwnd);
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();

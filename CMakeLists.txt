@@ -22,8 +22,8 @@ add_executable(Win_Switcher src/main.cpp
         src/widget.cpp
         header/widget.h
         ui/widget.ui
-        src/winEventHook.cpp
-        header/winEventHook.h
+        src/utils/winEventHook.cpp
+        header/utils/winEventHook.h
         src/utils/Util.cpp
         header/utils/Util.h
         header/utils/setWindowBlur.h

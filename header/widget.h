@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <Windows.h>
 #include <QListWidget>
+#include <QDebug>
 
 struct WindowGroup;
 struct WindowInfo {
@@ -11,6 +12,11 @@ struct WindowInfo {
     QString className;
     HWND hwnd = nullptr;
 };
+// C++17 inline: 防止重定义
+inline QDebug operator<<(QDebug dbg, const WindowInfo& info) {
+    dbg.nospace() << "WindowInfo(" << info.title << ", " << info.className << ", " << info.hwnd << ")";
+    return dbg.space();
+}
 Q_DECLARE_METATYPE(WindowInfo) // for QVariant
 struct WindowGroup {
     WindowGroup() = default;

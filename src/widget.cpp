@@ -72,16 +72,8 @@ void Widget::keyReleaseEvent(QKeyEvent *event) {
                     }
                 }
                 if (targetWin.hwnd) {
-                    auto hwnd = targetWin.hwnd;
-                    if (targetWin.className == Util::AppCoreWindowClass) { // UWP 只能对 frame 窗口操作
-                        if (auto frame = Util::getAppFrameWindow(hwnd))
-                            hwnd = frame;
-                    }
-                    if (IsIconic(hwnd))
-                        ShowWindow(hwnd, SW_RESTORE);
-                    // 本窗口是前台窗口，因此可以随意调用该函数转移焦点
-                    SetForegroundWindow(hwnd);
-                    qInfo() << "Switch to" << targetWin.title << targetWin.className << hwnd << group.exePath;
+                    Util::switchToWindow(targetWin.hwnd);
+                    qInfo() << "Switch to" << targetWin << group.exePath;
                 }
             }
         }
@@ -103,7 +95,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对�
     auto path = Util::getProcessExePath(hwnd);
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path] = {hwnd, QDateTime::currentDateTime()}; // TODO 需要记录同组窗口之间的顺序
-    qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd);
+    qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
 }
 
 bool Widget::requestShow() {
@@ -113,12 +105,12 @@ bool Widget::requestShow() {
         if (hwnd == this->hWnd()) continue; // skip self
         auto path = Util::getProcessExePath(hwnd);
         if (path.isEmpty()) continue; // TODO 可能需要管理员权限
-        auto title = Util::getWindowTitle(hwnd);
-        auto className = Util::getClassName(hwnd);
-        auto icon = Util::getCachedIcon(path);
-        winGroupMap[path].exePath = path;
-        winGroupMap[path].icon = icon;
-        winGroupMap[path].addWindow({title, className, hwnd});
+        auto& winGroup = winGroupMap[path];
+        if (winGroup.exePath.isEmpty()) { // QIcon::isNull 判断可能不太准（例如空图标）
+            winGroup.exePath = path;
+            winGroup.icon = Util::getCachedIcon(path);
+        }
+        winGroup.addWindow({Util::getWindowTitle(hwnd), Util::getClassName(hwnd), hwnd});
     }
     auto winGroupList = winGroupMap.values();
     // 按照活跃度排序

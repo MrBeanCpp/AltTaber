@@ -20,7 +20,7 @@ namespace Util {
         return result;
     }
 
-    QString getClassName(HWND hwnd) {
+    QString getClassName(HWND hwnd) { // 性能还可以，0.02ms
         const int MAX = 256;
         wchar_t className[MAX];
         GetClassName(hwnd, className, MAX);
@@ -55,6 +55,20 @@ namespace Util {
 
         CloseHandle(hProcess);
         return {};
+    }
+
+    /// 将焦点从[自身]切换至[指定窗口]
+    /// <br> 注意：如果自身没有焦点，可能失败
+    void switchToWindow(HWND hwnd) {
+        auto className = getClassName(hwnd);
+        if (className == AppCoreWindowClass) { // UWP 只能对 frame 窗口操作
+            if (auto frame = getAppFrameWindow(hwnd))
+                hwnd = frame;
+        }
+        if (IsIconic(hwnd))
+            ShowWindow(hwnd, SW_RESTORE);
+        // 本窗口是前台窗口，因此可以随意调用该函数转移焦点
+        SetForegroundWindow(hwnd);
     }
 
     BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
@@ -269,10 +283,10 @@ namespace Util {
         if (auto icon = IconCache.value(path); !icon.isNull())
             return icon;
 
-        qDebug() << "Icon not found in cache, loading...";
+        qDebug() << "Icon not found in cache, loading..." << path;
         QIcon icon;
         if (isUsingDefaultIcon(path)) {
-            qDebug() << "Default Icon, maybe UWP";
+            qDebug() << "Default Icon, maybe UWP" << path;
             icon = getAppIcon(path);
         } else
             icon = getJumboIcon(path);

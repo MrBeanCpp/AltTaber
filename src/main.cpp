@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <QTimer>
 #include "../header/widget.h"
-#include "winEventHook.h"
+#include "utils/winEventHook.h"
 #include "utils/Util.h"
 #include <QKeyEvent>
 
