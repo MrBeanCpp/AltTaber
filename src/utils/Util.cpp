@@ -34,10 +34,10 @@ namespace Util {
         return rt == S_OK && isCloaked;
     }
 
+    // slow
     QString getProcessExePath(HWND hwnd) {
         DWORD processId = 0;
         GetWindowThreadProcessId(hwnd, &processId);
-
         if (processId == 0)
             return {};
 
@@ -79,6 +79,10 @@ namespace Util {
                 "WorkerW", // explorer.exe
                 "Shell_TrayWnd" // explorer.exe
         };
+        static const QStringList BlackList_ExePath = {
+                R"(C:\Windows\ImmersiveControlPanel\SystemSettings.exe)",
+                R"(C:\Windows\System32\wscript.exe)"
+        };
         static const QStringList BlackList_FileName = { // TODO by user from config
                 "Follower.exe",
                 "QQ Follower.exe"
@@ -92,9 +96,10 @@ namespace Util {
 //            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
             && GetWindowTextLength(hwnd) > 0
             && !BlackList_ClassName.contains(getClassName(hwnd))
-            && !BlackList_FileName.contains(QFileInfo(getProcessExePath(hwnd)).fileName())
             ) {
-            return true;
+            auto path = getProcessExePath(hwnd); // 耗时操作，减少次数
+            if (!BlackList_ExePath.contains(path) && !BlackList_FileName.contains(QFileInfo(path).fileName()))
+                return true;
         }
         return false;
     }
@@ -125,11 +130,9 @@ namespace Util {
         return list;
     }
 
+    // about 2ms
     QList<HWND> listValidWindows() {
         QList<HWND> list;
-        static const QStringList BlackList_App_ExePath = {
-                R"(C:\Windows\ImmersiveControlPanel\SystemSettings.exe)"
-        };
         static const QStringList BlackList_App_FileName = { // WindowsApps Windows.UI.Core.CoreWindow
                 "Nahimic3.exe",
                 "HxOutlook.exe",
@@ -158,8 +161,7 @@ namespace Util {
             auto fileName = QFileInfo(path).fileName();
             // 进一步对UWP进行过滤（根据路径）
             if (className == AppCoreWindowClass) {
-                if (BlackList_App_ExePath.contains(path)
-                    || path.startsWith(R"(C:\Windows\SystemApps\)")
+                if (path.startsWith(R"(C:\Windows\SystemApps\)")
                     || BlackList_App_FileName.contains(fileName)) {
                     continue;
                 }
