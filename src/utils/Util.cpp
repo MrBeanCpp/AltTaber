@@ -240,13 +240,24 @@ namespace Util {
         }
         file.close();
 
-        QDomElement root = doc.documentElement();
-        QDomElement properties = root.firstChildElement("Properties");
-        QDomElement logo = properties.firstChildElement("Logo");
+        static const QStringList LogoAttributes = {
+//                "Square150x150Logo", // 周围会被填充大量透明，导致图标很小
+                "Square44x44Logo",
+                "Square30x30Logo"
+                "SmallLogo"
+        };
 
-        if (!logo.isNull()) {
-            return logo.text();
+        QDomElement root = doc.documentElement();
+        QDomElement appElement = root.firstChildElement("Applications").firstChildElement("Application");
+        QDomElement visualElement = appElement.firstChildElement("uap:VisualElements");
+        for (const auto& attr : LogoAttributes) {
+            if (auto value = visualElement.attribute(attr); !value.isEmpty())
+                return value;
         }
+
+        QDomElement storeLogo = root.firstChildElement("Properties").firstChildElement("Logo");
+        if (!storeLogo.isNull())
+            return storeLogo.text();
 
         return {};
     }
@@ -266,7 +277,12 @@ namespace Util {
         QStringList filters;
         filters << wildcard; // 例如 "StoreLogo*.png"
 
-        QStringList matchingFiles = dir.entryList(filters, QDir::Files);
+        QStringList matchingFiles = dir.entryList(filters, QDir::Files, QDir::Size); // sort by size
+
+        // `remove_if` 不会真正删除，只是移动到后面，返回新的end迭代器
+        auto _ = std::remove_if(matchingFiles.begin(), matchingFiles.end(), [](const QString& fileName) {
+            return fileName.contains("_contrast-black.") || fileName.contains("_contrast-white.");
+        });
 
         if (!matchingFiles.isEmpty()) {
             QString logoFile = dir.absoluteFilePath(matchingFiles.first());
