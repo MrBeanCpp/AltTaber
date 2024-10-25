@@ -108,7 +108,7 @@ bool Widget::requestShow() {
         auto& winGroup = winGroupMap[path];
         if (winGroup.exePath.isEmpty()) { // QIcon::isNull 判断可能不太准（例如空图标）
             winGroup.exePath = path;
-            winGroup.icon = Util::getCachedIcon(path);
+            winGroup.icon = Util::getCachedIcon(path); // TODO background thread
         }
         winGroup.addWindow({Util::getWindowTitle(hwnd), Util::getClassName(hwnd), hwnd});
     }

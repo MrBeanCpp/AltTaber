@@ -114,7 +114,7 @@ namespace Util {
 
     QList<HWND> listValidWindows() {
         QList<HWND> list;
-        static const QStringList BlackList_ExePath = {
+        static const QStringList BlackList_App_ExePath = {
                 R"(C:\Windows\ImmersiveControlPanel\SystemSettings.exe)"
         };
         static const QStringList BlackList_App_FileName = { // WindowsApps Windows.UI.Core.CoreWindow
@@ -122,10 +122,20 @@ namespace Util {
                 "HxOutlook.exe",
                 "Video.UI.exe"
         };
+        static const QStringList BlackList_FileName = { // TODO by user from config
+                "Follower.exe",
+                "QQ Follower.exe"
+        };
         auto winList = Util::enumWindows();
         for (auto hwnd : winList) {
+            auto path = Util::getProcessExePath(hwnd);
+            auto fileName = QFileInfo(path).fileName();
+            if (BlackList_FileName.contains(fileName))
+                continue;
+
+            auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
-            if (Util::getClassName(hwnd) == AppFrameWindowClass) { // UWP的父窗口
+            if (className == AppFrameWindowClass) { // UWP的父窗口
                 const auto childList = Util::enumChildWindows(hwnd);
                 hwnd = nullptr;
                 for (HWND child : childList) {
@@ -140,14 +150,11 @@ namespace Util {
                 // 如果子窗口都是无标题，说明是奇怪窗口
             }
 
-            auto className = Util::getClassName(hwnd);
             // 进一步对UWP进行过滤（根据路径）
             if (className == AppCoreWindowClass) {
-                auto path = Util::getProcessExePath(hwnd);
-                QFileInfo fileInfo(path);
-                if (BlackList_ExePath.contains(path)
+                if (BlackList_App_ExePath.contains(path)
                     || path.startsWith(R"(C:\Windows\SystemApps\)")
-                    || BlackList_App_FileName.contains(fileInfo.fileName())) {
+                    || BlackList_App_FileName.contains(fileName)) {
                     continue;
                 }
             }
