@@ -73,8 +73,8 @@ void Widget::keyReleaseEvent(QKeyEvent *event) {
                 }
                 if (targetWin.hwnd) {
                     auto hwnd = targetWin.hwnd;
-                    if (targetWin.className == Util::UwpCoreWindowClass) { // UWP 只能对 frame 窗口操作
-                        if (auto frame = Util::getUwpFrameWindow(hwnd))
+                    if (targetWin.className == Util::AppCoreWindowClass) { // UWP 只能对 frame 窗口操作
+                        if (auto frame = Util::getAppFrameWindow(hwnd))
                             hwnd = frame;
                     }
                     if (IsIconic(hwnd))
@@ -115,13 +115,7 @@ bool Widget::requestShow() {
         if (path.isEmpty()) continue; // TODO 可能需要管理员权限
         auto title = Util::getWindowTitle(hwnd);
         auto className = Util::getClassName(hwnd);
-        // ExtractIconEx 最大返回32x32
-        // IShellItemImageFactory::GetImage 获取的图像有锯齿（64x64），而256x256倒是好一点，但是若exe没有这么大的图标，缩放后还是会很小（中心）
-        // SHGetFileInfo 获取的图标最大只能32x32, 但是可以通过Index + SHGetImageList获取更大的图标(Jumbo)，这就是QFileIconProvider的实现
-        // 没办法，对于不包含大图标的exe，周围会被填充透明，导致真实图标很小（例如，[Follower]获取64x64的图标，但只有左上角有8x8图标，其余透明）
-        // 更诡异的是，48x48的Icon，Follower是可以正常获取的，比64x64的实际Icon尺寸还要大，倒行逆施
-        // 但是我无法得知真实图标大小，无法进行缩放，只能作罢
-        auto icon = Util::getJumboIcon(path);
+        auto icon = Util::getCachedIcon(path);
         winGroupMap[path].exePath = path;
         winGroupMap[path].icon = icon;
         winGroupMap[path].addWindow({title, className, hwnd});
@@ -158,7 +152,7 @@ bool Widget::requestShow() {
         lw->setFixedHeight(firstRect.height());
 
         // move to center
-        auto screen = QApplication::primaryScreen(); // maybe nullptr
+        auto screen = QApplication::primaryScreen(); // TODO maybe nullptr 处理多屏幕 & DPI
         auto lwRect = lw->rect();
         auto thisRect = lwRect.marginsAdded({20, 20, 20, 20});
         thisRect.moveCenter(screen->geometry().center());
@@ -166,7 +160,7 @@ bool Widget::requestShow() {
         lwRect.moveCenter(this->rect().center()); // local pos
         lw->setGeometry(lwRect);
     } else {
-        // TODO no item, hide
+        // no item, hide ? TODO
         return false;
     }
 

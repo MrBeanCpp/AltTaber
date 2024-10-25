@@ -13,12 +13,14 @@ namespace Util {
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
-    HWND getUwpFrameWindow(HWND hwnd);
+    HWND getAppFrameWindow(HWND hwnd);
     QIcon getJumboIcon(const QString& filePath);
-    bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute =  DWMWCP_ROUND);
+    QIcon getAppIcon(const QString& path);
+    QIcon getCachedIcon(const QString& path);
+    bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute = DWMWCP_ROUND);
 
-    inline QString UwpCoreWindowClass = "Windows.UI.Core.CoreWindow";
-    inline QString UwpAppFrameWindowClass = "ApplicationFrameWindow";
+    inline QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
+    inline QString AppFrameWindowClass = "ApplicationFrameWindow";
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

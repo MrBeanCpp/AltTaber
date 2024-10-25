@@ -15,6 +15,7 @@ find_package(Qt5 COMPONENTS
         Gui
         Widgets
         WinExtras
+        Xml
         REQUIRED)
 
 add_executable(Win_Switcher src/main.cpp
@@ -32,6 +33,7 @@ target_link_libraries(Win_Switcher
         Qt5::Gui
         Qt5::Widgets
         Qt5::WinExtras
+        Qt5::Xml
 )
 
 target_link_libraries(${PROJECT_NAME}

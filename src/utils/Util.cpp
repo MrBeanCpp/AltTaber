@@ -7,6 +7,7 @@
 #include <QtWin>
 #include <commoncontrols.h>
 #include <ShObjIdl_core.h>
+#include <QDomDocument>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -110,7 +111,7 @@ namespace Util {
         auto winList = Util::enumWindows();
         for (auto hwnd : winList) {
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
-            if (Util::getClassName(hwnd) == UwpAppFrameWindowClass) { // UWP的父窗口
+            if (Util::getClassName(hwnd) == AppFrameWindowClass) { // UWP的父窗口
                 const auto childList = Util::enumChildWindows(hwnd);
                 hwnd = nullptr;
                 for (HWND child : childList) {
@@ -127,7 +128,7 @@ namespace Util {
 
             auto className = Util::getClassName(hwnd);
             // 进一步对UWP进行过滤（根据路径）
-            if (className == UwpCoreWindowClass) {
+            if (className == AppCoreWindowClass) {
                 auto path = Util::getProcessExePath(hwnd);
                 QFileInfo fileInfo(path);
                 if (BlackList_ExePath.contains(path)
@@ -147,11 +148,11 @@ namespace Util {
     /// 对Core子窗口进行hwnd之类的操作之后，就会脱离原本的ApplicationFrameWindow，所以很难通过关联性去查找了<br>
     /// 这种情况下，通过标题和类名比较好<br>
     /// 这里需要查找Frame窗口的原因是，restore等操作只能对其生效！
-    HWND getUwpFrameWindow(HWND hwnd) {
+    HWND getAppFrameWindow(HWND hwnd) {
         auto className = Util::getClassName(hwnd);
         auto title = Util::getWindowTitle(hwnd);
-        if (className == UwpCoreWindowClass) {
-            if (auto res = FindWindowW(LPCWSTR(UwpAppFrameWindowClass.utf16()), LPCWSTR(title.utf16())))
+        if (className == AppCoreWindowClass) {
+            if (auto res = FindWindowW(LPCWSTR(AppFrameWindowClass.utf16()), LPCWSTR(title.utf16())))
                 return res;
             qWarning() << "Failed to find ApplicationFrameWindow of " << title << hwnd;
             return nullptr;
@@ -164,6 +165,12 @@ namespace Util {
     // 对于QFileIconProvider的优势是可以多线程
     // ref: https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L333
     // ref: https://blog.csdn.net/ssss_sj/article/details/9786403
+    // ExtractIconEx 最大返回32x32
+    // IShellItemImageFactory::GetImage 获取的图像有锯齿（64x64），而256x256倒是好一点，但是若exe没有这么大的图标，缩放后还是会很小（中心）
+    // SHGetFileInfo 获取的图标最大只能32x32, 但是可以通过Index + SHGetImageList获取更大的图标(Jumbo)，这就是QFileIconProvider的实现
+    // 没办法，对于不包含大图标的exe，周围会被填充透明，导致真实图标很小（例如，[Follower]获取64x64的图标，但只有左上角有8x8图标，其余透明）
+    // 更诡异的是，48x48的Icon，Follower是可以正常获取的，比64x64的实际Icon尺寸还要大，倒行逆施
+    // 但是我无法得知真实图标大小，无法进行缩放，只能作罢
     QIcon getJumboIcon(const QString& filePath) {
         SHFILEINFOW sfi = {nullptr};
         // Get the icon index using SHGetFileInfo
@@ -185,6 +192,91 @@ namespace Util {
             }
         }
         imageList->Release();
+        return icon;
+    }
+
+    /// 普通API很难获取UWP的图标，遂手动解析AppxManifest.xml
+    /// <br> relativePath: e.g. Assets\\StoreLogo.png
+    QString getLogoPathFromAppxManifest(const QString& manifestPath)
+    {
+        QFile file(manifestPath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qDebug() << "无法打开AppxManifest.xml文件" << manifestPath;
+            return {};
+        }
+
+        QDomDocument doc;
+        if (!doc.setContent(&file)) {
+            file.close();
+            qDebug() << "无法解析XML文件";
+            return {};
+        }
+        file.close();
+
+        QDomElement root = doc.documentElement();
+        QDomElement properties = root.firstChildElement("Properties");
+        QDomElement logo = properties.firstChildElement("Logo");
+
+        if (!logo.isNull()) {
+            return logo.text();
+        }
+
+        return {};
+    }
+
+    /// 匹配某个变体，如：StoreLogo.scale-200.png
+    QIcon loadUWPLogo(const QString& logoPath)
+    {
+        QFileInfo fileInfo(logoPath);
+        QDir dir = fileInfo.absoluteDir();
+        QString wildcard = fileInfo.baseName() + "*." + fileInfo.suffix();
+
+        if (!dir.exists()) {
+            qDebug() << "Directory does not exist!";
+            return {};
+        }
+
+        QStringList filters;
+        filters << wildcard; // 例如 "StoreLogo*.png"
+
+        QStringList matchingFiles = dir.entryList(filters, QDir::Files);
+
+        if (!matchingFiles.isEmpty()) {
+            QString logoFile = dir.absoluteFilePath(matchingFiles.first());
+            return QIcon(logoFile);
+        } else {
+            qWarning() << "No matching files found!";
+        }
+        return {};
+    }
+
+    QIcon getAppIcon(const QString& path) {
+        QFileInfo fileInfo(path);
+        const auto dir = fileInfo.absolutePath();
+        const auto manifestPath = dir + "\\AppxManifest.xml";
+        const auto logoPath = dir + "\\" + getLogoPathFromAppxManifest(manifestPath);
+        return loadUWPLogo(logoPath);
+    }
+
+    bool isUsingDefaultIcon(const QString& exePath) {
+        UINT iconCount = ExtractIconEx(exePath.toStdWString().c_str(), -1, nullptr, nullptr, 0);
+        return iconCount == 0;
+    }
+
+    /// Cached Icon, including UWP
+    QIcon getCachedIcon(const QString& path) {
+        static QHash<QString, QIcon> IconCache;
+        if (auto icon = IconCache.value(path); !icon.isNull())
+            return icon;
+
+        qDebug() << "Icon not found in cache, loading...";
+        QIcon icon;
+        if (isUsingDefaultIcon(path)) {
+            qDebug() << "Default Icon, maybe UWP";
+            icon = getAppIcon(path);
+        } else
+            icon = getJumboIcon(path);
+        IconCache.insert(path, icon);
         return icon;
     }
 
