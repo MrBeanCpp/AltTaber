@@ -226,8 +226,11 @@ namespace Util {
 
     /// 普通API很难获取UWP的图标，遂手动解析AppxManifest.xml
     /// <br> relativePath: e.g. Assets\\StoreLogo.png
-    QString getLogoPathFromAppxManifest(const QString& manifestPath)
-    {
+    // ref: https://github.com/microsoft/PowerToys/blob/5b616c9eed776566e728ee6dd710eb706e73e300/src/modules/launcher/Plugins/Microsoft.Plugin.Program/Programs/UWPApplication.cs#L394
+    // 函数名：LogoUriFromManifest 说明是从AppxManifest.xml中获取Logo路径
+    // ref: https://learn.microsoft.com/zh-cn/windows/uwp/app-resources/images-tailored-for-scale-theme-contrast
+    // ref: https://stackoverflow.com/questions/39910625/how-to-properly-structure-uwp-app-icons-in-appxmanifest-xml-file-for-a-win32-app
+    QString getLogoPathFromAppxManifest(const QString& manifestPath) {
         QFile file(manifestPath);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             qDebug() << "无法打开AppxManifest.xml文件" << manifestPath;
@@ -265,8 +268,7 @@ namespace Util {
     }
 
     /// 匹配某个变体，如：StoreLogo.scale-200.png
-    QIcon loadUWPLogo(const QString& logoPath)
-    {
+    QIcon loadUWPLogo(const QString& logoPath) {
         QFileInfo fileInfo(logoPath);
         QDir dir = fileInfo.absoluteDir();
         QString wildcard = fileInfo.baseName() + "*." + fileInfo.suffix();

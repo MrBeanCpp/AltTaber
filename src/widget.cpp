@@ -6,6 +6,7 @@
 #include <QKeyEvent>
 #include <QScreen>
 #include "utils/setWindowBlur.h"
+#include "utils/IconOnlyDelegate.h"
 #include <QPainter>
 #include <QPen>
 #include <QDateTime>
@@ -32,6 +33,20 @@ Widget::Widget(QWidget *parent) :
     lw->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     lw->setIconSize({64, 64});
     lw->setGridSize({80, 80});
+    lw->setFixedHeight(lw->gridSize().height());
+    lw->setStyleSheet(R"(
+        QListWidget {
+            background-color: transparent;
+            border: none;
+            outline: none; /* 去除选中时的虚线框（在文字为空时，会形成闪电一样的标志 离谱） */
+        }
+    )");
+
+    // 就算Text为Null，也会占用空间，很难做到真正的IConMode，所以只能delegate自绘
+    // 本来为了去除图标选中变色样式，可以对Icon手动addPixmap(..., QIcon::Selected) or (& ~Qt::ItemIsSelectable)
+    // 但是采用delegate后，就没必要了
+    // will not take ownership of delegate
+    lw->setItemDelegate(new IconOnlyDelegate(lw));
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
         if (focusWindow == nullptr) // hide when lost focus
@@ -88,7 +103,7 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(Qt::NoPen);//取消边框//pen决定边框颜色
-    painter.setBrush(QColor(10, 10, 10, 50));
+    painter.setBrush(QColor(25, 25, 25, 100));
     painter.drawRect(rect());
 }
 
@@ -96,13 +111,13 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对应的问题！
     if (hwnd == this->hWnd()) return;
     if (!Util::isWindowAcceptable(hwnd)) return;
-    auto path = Util::getProcessExePath(hwnd);
+    auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path] = {hwnd, QDateTime::currentDateTime()}; // TODO 需要记录同组窗口之间的顺序
     qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path;
 }
 
-bool Widget::requestShow() {
+bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会导致显示 但无法操控
     QMap<QString, WindowGroup> winGroupMap;
     auto list = Util::listValidWindows();
     for (auto hwnd : list) {
@@ -130,6 +145,8 @@ bool Widget::requestShow() {
     for (auto& winGroup : winGroupList) {
         auto item = new QListWidgetItem(winGroup.icon, {}); // null != "", which will completely hide text area
         item->setData(Qt::UserRole, QVariant::fromValue(winGroup));
+        item->setSizeHint(lw->gridSize()); // 决定了delegate的绘制区域，比grid小的话，paintRect就不居中了，而且update也不及时
+//        item->setFlags(item->flags() & ~Qt::ItemIsSelectable); // 不可选中
         lw->addItem(item);
     }
     if (lw->count() >= 2) {
@@ -152,7 +169,6 @@ bool Widget::requestShow() {
         auto firstRect = lw->visualItemRect(firstItem);
         auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
         lw->setFixedWidth(width);
-        lw->setFixedHeight(firstRect.height());
 
         // move to center
         auto screen = QApplication::primaryScreen(); // TODO maybe nullptr 处理多屏幕 & DPI

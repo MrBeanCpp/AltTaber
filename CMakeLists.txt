@@ -27,7 +27,9 @@ add_executable(Win_Switcher src/main.cpp
         src/utils/Util.cpp
         header/utils/Util.h
         header/utils/setWindowBlur.h
-        src/utils/setWindowBlur.cpp)
+        src/utils/setWindowBlur.cpp
+        src/utils/IconOnlyDelegate.cpp
+        header/utils/IconOnlyDelegate.h)
 target_link_libraries(Win_Switcher
         Qt5::Core
         Qt5::Gui

@@ -26,10 +26,7 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">QListWidget {
-	background-color: transparent;
-	border: none;
-}</string>
+    <string notr="true"/>
    </property>
   </widget>
  </widget>
