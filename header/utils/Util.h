@@ -19,8 +19,10 @@ namespace Util {
     QIcon getJumboIcon(const QString& filePath);
     QIcon getAppIcon(const QString& path);
     QIcon getCachedIcon(const QString& path);
+    QPixmap getWindowIcon(HWND hwnd);
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute = DWMWCP_ROUND);
     bool isKeyPressed(int vkey);
+    QIcon overlayIcon(const QPixmap& icon, const QPixmap& overlay, const QRect& overlayRect);
 
     inline const QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
     inline const QString AppFrameWindowClass = "ApplicationFrameWindow";

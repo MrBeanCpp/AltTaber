@@ -8,6 +8,7 @@
 #include <commoncontrols.h>
 #include <ShObjIdl_core.h>
 #include <QDomDocument>
+#include <QPainter>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -327,6 +328,15 @@ namespace Util {
         return icon;
     }
 
+    /// 获取窗口的关联图标，例如任务栏图标（旧版QQ会设置当前好友头像），或资源管理器当前文件夹图标（但是任务栏不会变化）
+    /// <br> Normally 32x32, & not support UWP
+    QPixmap getWindowIcon(HWND hwnd) {
+        auto hIcon = reinterpret_cast<HICON>(SendMessageW(hwnd, WM_GETICON, ICON_BIG, 0));
+        if (!hIcon) // 这种方式能获取更多图标，例如当窗口没有使用SETICON时
+            hIcon = reinterpret_cast<HICON>(GetClassLongPtr(hwnd, GCLP_HICON));
+        return QtWin::fromHICON(hIcon);
+    }
+
     /// 设置窗口圆角 原来这么方便嘛！ 为什么Qt搜不到！
     // https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L1275
     // https://github.com/DinoChan/WindowChromeApplyRoundedCorners
@@ -342,5 +352,14 @@ namespace Util {
     /// Convenience function of `GetAsyncKeyState`
     bool isKeyPressed(int vkey) {
         return GetAsyncKeyState(vkey) & 0x8000;
+    }
+
+    /// Overlay icon
+    QIcon overlayIcon(const QPixmap& icon, const QPixmap& overlay, const QRect& overlayRect) {
+        QPixmap bg = icon;
+        QPainter painter(&bg);
+        painter.drawPixmap(overlayRect, overlay);
+        painter.end();
+        return bg;
     }
 } // Util

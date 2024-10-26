@@ -73,7 +73,7 @@ void Widget::keyPressEvent(QKeyEvent *event) {
 bool Widget::forceShow() {
     showMinimized();
     showNormal();
-    return GetForegroundWindow() == this->hWnd();
+    return isForeground();
 }
 
 void Widget::keyReleaseEvent(QKeyEvent *event) {
@@ -127,7 +127,14 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
         auto& winGroup = winGroupMap[path];
         if (winGroup.exePath.isEmpty()) { // QIcon::isNull 判断可能不太准（例如空图标）
             winGroup.exePath = path;
-            winGroup.icon = Util::getCachedIcon(path); // TODO background thread
+            auto icon = Util::getCachedIcon(path); // TODO background thread
+            if (path.endsWith("QQ\\bin\\QQ.exe", Qt::CaseInsensitive)) { // draw chat partner for classical QQ
+                QPixmap overlay = Util::getWindowIcon(hwnd);
+                const auto iSize = lw->iconSize();
+                QPixmap bgPixmap = icon.pixmap(iSize);
+                icon = Util::overlayIcon(bgPixmap, overlay, {{iSize.width()/2, iSize.height()/2}, iSize/2});
+            }
+            winGroup.icon = icon;
         }
         winGroup.addWindow({Util::getWindowTitle(hwnd), Util::getClassName(hwnd), hwnd});
     }
