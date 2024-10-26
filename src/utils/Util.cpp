@@ -81,7 +81,6 @@ namespace Util {
                 "Shell_TrayWnd" // explorer.exe
         };
         static const QStringList BlackList_ExePath = {
-                R"(C:\Windows\ImmersiveControlPanel\SystemSettings.exe)",
                 R"(C:\Windows\System32\wscript.exe)"
         };
         static const QStringList BlackList_FileName = { // TODO by user from config
@@ -290,6 +289,7 @@ namespace Util {
         });
 
         if (!matchingFiles.isEmpty()) {
+            qDebug() << "Found matching file:" << matchingFiles.first();
             QString logoFile = dir.absoluteFilePath(matchingFiles.first());
             return QIcon(logoFile);
         } else {
@@ -300,9 +300,9 @@ namespace Util {
 
     QIcon getAppIcon(const QString& path) {
         QFileInfo fileInfo(path);
-        const auto dir = fileInfo.absolutePath();
-        const auto manifestPath = dir + "\\AppxManifest.xml";
-        const auto logoPath = dir + "\\" + getLogoPathFromAppxManifest(manifestPath);
+        const auto dir = fileInfo.absolutePath() + "\\";
+        const auto manifestPath = dir + AppManifest;
+        const auto logoPath = dir + getLogoPathFromAppxManifest(manifestPath);
         return loadUWPLogo(logoPath);
     }
 
@@ -319,10 +319,13 @@ namespace Util {
 
         qDebug() << "Icon not found in cache, loading..." << path;
         QIcon icon;
-        if (isUsingDefaultIcon(path)) {
-            qDebug() << "Default Icon, maybe UWP" << path;
+        // 包含AppxManifest.xml的目录，很可能是UWP
+        // 不太好通过exe是否包含图标判断UWP，因为SystemSettings.exe居然包含图标！
+        if (QFile::exists(QFileInfo(path).dir().filePath(AppManifest))) {
+            qDebug() << "Detect AppxManifest.xml, maybe UWP" << path;
             icon = getAppIcon(path);
-        } else
+        }
+        if (icon.isNull()) // 兜底
             icon = getJumboIcon(path);
         IconCache.insert(path, icon);
         return icon;

@@ -79,6 +79,7 @@ bool Widget::forceShow() {
 void Widget::keyReleaseEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_Alt) {
         hide();
+        // active selected window
         if (auto item = lw->currentItem()) {
             if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
                 WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
