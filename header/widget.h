@@ -42,7 +42,8 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 public:
-    explicit Widget(QWidget *parent = nullptr);
+    explicit Widget(QWidget *cur = nullptr);
+    QList<WindowGroup> prepareWindowGroupList();
     bool prepareListWidget();
     Q_INVOKABLE bool requestShow();
     void notifyForegroundChanged(HWND hwnd);
@@ -52,6 +53,7 @@ public:
 
 private:
     bool forceShow();
+    void showLabelForItem(QListWidgetItem* item);
 
 private:
     Ui::Widget *ui;

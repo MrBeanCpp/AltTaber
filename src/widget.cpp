@@ -48,25 +48,8 @@ Widget::Widget(QWidget *parent) :
     // will not take ownership of delegate
     lw->setItemDelegate(new IconOnlyDelegate(lw));
 
-    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *current, QListWidgetItem *) {
-        if (current) {
-            auto path = current->data(Qt::UserRole).value<WindowGroup>().exePath;
-            ui->label->setText(Util::getFileDescription(path));
-            ui->label->adjustSize();
-
-            auto itemRect = lw->visualItemRect(current);
-            auto center = itemRect.center() + QPoint(0, itemRect.height() / 2 + ListWidgetMargin.bottom() / 2);
-            center = lw->mapTo(this, center);
-            auto labelRect = ui->label->rect();
-            labelRect.moveCenter(center);
-
-            if (labelRect.left() < 0) // 防止出界
-                labelRect.moveLeft(0);
-            else if (labelRect.right() > this->width())
-                labelRect.moveRight(this->width());
-
-            ui->label->move(labelRect.topLeft());
-        }
+    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *cur, QListWidgetItem *) {
+        if (cur) showLabelForItem(cur);
     });
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
@@ -95,6 +78,28 @@ bool Widget::forceShow() {
     showMinimized();
     showNormal();
     return isForeground();
+}
+
+/// show App description under the icon
+void Widget::showLabelForItem(QListWidgetItem *item) {
+    if (!item) return;
+
+    auto path = item->data(Qt::UserRole).value<WindowGroup>().exePath;
+    ui->label->setText(Util::getFileDescription(path));
+    ui->label->adjustSize();
+
+    auto itemRect = lw->visualItemRect(item);
+    auto center = itemRect.center() + QPoint(0, itemRect.height() / 2 + ListWidgetMargin.bottom() / 2);
+    center = lw->mapTo(this, center);
+    auto labelRect = ui->label->rect();
+    labelRect.moveCenter(center);
+
+    if (labelRect.left() < 0) // 防止出界
+        labelRect.moveLeft(0);
+    else if (labelRect.right() > this->width())
+        labelRect.moveRight(this->width());
+
+    ui->label->move(labelRect.topLeft());
 }
 
 void Widget::keyReleaseEvent(QKeyEvent *event) {
@@ -139,7 +144,8 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对�
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
-bool Widget::prepareListWidget() {
+/// collect, filter, sort Windows for presentation
+QList<WindowGroup> Widget::prepareWindowGroupList() {
     QMap<QString, WindowGroup> winGroupMap;
     auto list = Util::listValidWindows();
     for (auto hwnd : list) {
@@ -169,7 +175,11 @@ bool Widget::prepareListWidget() {
         if (timeA.isValid() && timeB.isValid()) return timeA > timeB;
         return timeA.isValid();
     });
+    return winGroupList;
+}
 
+bool Widget::prepareListWidget() {
+    auto winGroupList = prepareWindowGroupList();
     lw->clear();
     for (auto& winGroup : winGroupList) {
         auto item = new QListWidgetItem(winGroup.icon, {}); // null != "", which will completely hide text area
@@ -179,6 +189,7 @@ bool Widget::prepareListWidget() {
         lw->addItem(item);
     }
 
+    // calculate Geometry
     if (auto firstItem = lw->item(0)) {
         auto firstRect = lw->visualItemRect(firstItem);
         auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
@@ -197,6 +208,7 @@ bool Widget::prepareListWidget() {
         return false;
     }
 
+    // set current item
     if (lw->count() >= 2) {
         auto foreWin = GetForegroundWindow();
         bool isFirstItemForeground = false;
