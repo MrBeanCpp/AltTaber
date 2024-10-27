@@ -41,12 +41,32 @@ Widget::Widget(QWidget *parent) :
             outline: none; /* 去除选中时的虚线框（在文字为空时，会形成闪电一样的标志 离谱） */
         }
     )");
-
     // 就算Text为Null，也会占用空间，很难做到真正的IConMode，所以只能delegate自绘
     // 本来为了去除图标选中变色样式，可以对Icon手动addPixmap(..., QIcon::Selected) or (& ~Qt::ItemIsSelectable)
     // 但是采用delegate后，就没必要了
     // will not take ownership of delegate
     lw->setItemDelegate(new IconOnlyDelegate(lw));
+
+    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *current, QListWidgetItem *_previous) {
+        if (current) {
+            auto exePath = current->data(Qt::UserRole).value<WindowGroup>().exePath;
+            ui->label->setText(Util::getFileDescription(exePath));
+            ui->label->adjustSize();
+
+            auto itemRect = lw->visualItemRect(current);
+            auto center = itemRect.center() + QPoint(0, itemRect.height() / 2 + ListWidgetMargin.bottom() / 2);
+            center = lw->mapTo(this, center);
+            auto labelRect = ui->label->rect();
+            labelRect.moveCenter(center);
+
+            if (labelRect.left() < 0) // 防止出界
+                labelRect.moveLeft(0);
+            else if (labelRect.right() > this->width())
+                labelRect.moveRight(this->width());
+
+            ui->label->move(labelRect.topLeft());
+        }
+    });
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
         if (focusWindow == nullptr) // hide when lost focus
@@ -115,8 +135,8 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对�
     auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path] = {hwnd, QDateTime::currentDateTime()}; // TODO 需要记录同组窗口之间的顺序
-    qDebug() << "Foreground changed" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path;
-}
+    qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
+} // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
 bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会导致显示 但无法操控
     QMap<QString, WindowGroup> winGroupMap;
@@ -157,6 +177,25 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
 //        item->setFlags(item->flags() & ~Qt::ItemIsSelectable); // 不可选中
         lw->addItem(item);
     }
+
+    if (auto firstItem = lw->item(0)) {
+        auto firstRect = lw->visualItemRect(firstItem);
+        auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
+        lw->setFixedWidth(width);
+
+        // move to center
+        auto screen = QApplication::primaryScreen(); // TODO maybe nullptr 处理多屏幕 & DPI
+        auto lwRect = lw->rect();
+        auto thisRect = lwRect.marginsAdded(ListWidgetMargin);
+        thisRect.moveCenter(screen->geometry().center());
+        this->setGeometry(thisRect); // global pos
+        lwRect.moveCenter(this->rect().center()); // local pos
+        lw->setGeometry(lwRect);
+    } else {
+        // no item, hide ? TODO
+        return false;
+    }
+
     if (lw->count() >= 2) {
         auto foreWin = GetForegroundWindow();
         bool isFirstItemForeground = false;
@@ -168,27 +207,9 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
         }
         // 如果第一个item是前台窗口，就选中第二个
         // 因为有些情况：选中桌面 并不会产生一个item
-        lw->setCurrentRow(isFirstItemForeground ? 1 : 0);
+        lw->setCurrentRow(isFirstItemForeground ? 1 : 0); // 首次显示时，该行特别耗时：472ms
     } else if (lw->count() == 1) {
         lw->setCurrentRow(0);
-    }
-
-    if (auto firstItem = lw->item(0)) {
-        auto firstRect = lw->visualItemRect(firstItem);
-        auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
-        lw->setFixedWidth(width);
-
-        // move to center
-        auto screen = QApplication::primaryScreen(); // TODO maybe nullptr 处理多屏幕 & DPI
-        auto lwRect = lw->rect();
-        auto thisRect = lwRect.marginsAdded({20, 20, 20, 20});
-        thisRect.moveCenter(screen->geometry().center());
-        this->setGeometry(thisRect); // global pos
-        lwRect.moveCenter(this->rect().center()); // local pos
-        lw->setGeometry(lwRect);
-    } else {
-        // no item, hide ? TODO
-        return false;
     }
 
     return forceShow();

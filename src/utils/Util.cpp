@@ -9,6 +9,8 @@
 #include <ShObjIdl_core.h>
 #include <QDomDocument>
 #include <QPainter>
+#include <propkey.h>
+#include <atlbase.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -55,6 +57,30 @@ namespace Util {
 
         CloseHandle(hProcess);
         return {};
+    }
+
+    QString getFileDescription(const QString& path) {
+        CoInitialize(nullptr); // 初始化 COM 库
+
+        QString desc = QFileInfo(path).completeBaseName(); // fallback to base name
+
+        // 使用 CComPtr 自动释放 IShellItem2 接口
+        CComPtr<IShellItem2> pItem;
+        HRESULT hr = SHCreateItemFromParsingName(path.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&pItem));
+        if (SUCCEEDED(hr)) {
+            // 使用 CComHeapPtr 自动释放字符串（调用 CoTaskMemFree）
+            CComHeapPtr<WCHAR> pValue;
+            hr = pItem->GetString(PKEY_FileDescription, &pValue);
+            if (SUCCEEDED(hr))
+                desc = QString::fromWCharArray(pValue);
+            else
+                qWarning() << "No FileDescription, fallback to file name:" << desc;
+        } else {
+            qWarning() << "SHCreateItemFromParsingName() failed";
+        }
+
+        CoUninitialize(); // 取消初始化 COM 库
+        return desc;
     }
 
     /// 将焦点从[自身]切换至[指定窗口]
@@ -317,7 +343,7 @@ namespace Util {
         if (auto icon = IconCache.value(path); !icon.isNull())
             return icon;
 
-        qDebug() << "Icon not found in cache, loading..." << path;
+        QElapsedTimer t; t.start();
         QIcon icon;
         // 包含AppxManifest.xml的目录，很可能是UWP
         // 不太好通过exe是否包含图标判断UWP，因为SystemSettings.exe居然包含图标！
@@ -328,6 +354,7 @@ namespace Util {
         if (icon.isNull()) // 兜底
             icon = getJumboIcon(path);
         IconCache.insert(path, icon);
+        qDebug() << "Icon not found in cache, loaded in" << t.elapsed() << "ms" << path;
         return icon;
     }
 

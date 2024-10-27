@@ -5,11 +5,13 @@
 #include <QString>
 #include <QIcon>
 #include <dwmapi.h>
+#include <QElapsedTimer>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd);
     QString getClassName(HWND hwnd);
     QString getProcessExePath(HWND hwnd);
+    QString getFileDescription(const QString& path);
     void switchToWindow(HWND hwnd);
     bool isWindowAcceptable(HWND hwnd);
     QList<HWND> enumWindows();

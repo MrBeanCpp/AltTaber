@@ -55,6 +55,7 @@ private:
 private:
     Ui::Widget *ui;
     QListWidget* lw = nullptr;
+    const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)
     QHash<QString, QPair<HWND, QDateTime>> winActiveOrder;
 };
