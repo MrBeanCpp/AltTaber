@@ -94,10 +94,9 @@ void Widget::showLabelForItem(QListWidgetItem *item) {
     auto labelRect = ui->label->rect();
     labelRect.moveCenter(center);
 
-    if (labelRect.left() < 0) // 防止出界
-        labelRect.moveLeft(0);
-    else if (labelRect.right() > this->width())
-        labelRect.moveRight(this->width());
+    auto bound = this->rect().marginsRemoved({5, 0, 5, 0});
+    labelRect.moveLeft(qMax(labelRect.left(), bound.left()));
+    labelRect.moveRight(qMin(labelRect.right(), bound.right()));
 
     ui->label->move(labelRect.topLeft());
 }
@@ -178,7 +177,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     return winGroupList;
 }
 
-bool Widget::prepareListWidget() {
+bool Widget::prepareListWidget() { // TODO 会莫名检测到"设置"（"ImmersiveControlPanel\\SystemSettings.exe"）但是任务栏并没有，而且Switch + 关闭后又正常了
     auto winGroupList = prepareWindowGroupList();
     lw->clear();
     for (auto& winGroup : winGroupList) {
