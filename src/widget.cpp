@@ -34,6 +34,7 @@ Widget::Widget(QWidget *parent) :
     lw->setIconSize({64, 64});
     lw->setGridSize({80, 80});
     lw->setFixedHeight(lw->gridSize().height());
+    lw->setUniformItemSizes(true); // optimization ?
     lw->setStyleSheet(R"(
         QListWidget {
             background-color: transparent;
@@ -47,10 +48,10 @@ Widget::Widget(QWidget *parent) :
     // will not take ownership of delegate
     lw->setItemDelegate(new IconOnlyDelegate(lw));
 
-    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *current, QListWidgetItem *_previous) {
+    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *current, QListWidgetItem *) {
         if (current) {
-            auto exePath = current->data(Qt::UserRole).value<WindowGroup>().exePath;
-            ui->label->setText(Util::getFileDescription(exePath));
+            auto path = current->data(Qt::UserRole).value<WindowGroup>().exePath;
+            ui->label->setText(Util::getFileDescription(path));
             ui->label->adjustSize();
 
             auto itemRect = lw->visualItemRect(current);
@@ -138,7 +139,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对�
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
-bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会导致显示 但无法操控
+bool Widget::prepareListWidget() {
     QMap<QString, WindowGroup> winGroupMap;
     auto list = Util::listValidWindows();
     for (auto hwnd : list) {
@@ -207,10 +208,14 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
         }
         // 如果第一个item是前台窗口，就选中第二个
         // 因为有些情况：选中桌面 并不会产生一个item
-        lw->setCurrentRow(isFirstItemForeground ? 1 : 0); // 首次显示时，该行特别耗时：472ms
+        lw->setCurrentRow(isFirstItemForeground ? 1 : 0); //! 首次显示时，该行特别耗时：472ms
     } else if (lw->count() == 1) {
         lw->setCurrentRow(0);
     }
 
-    return forceShow();
+    return true;
+}
+
+bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会导致显示 但无法操控
+    return prepareListWidget() && forceShow();
 }

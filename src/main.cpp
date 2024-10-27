@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
     });
 
     winSwitcher = new Widget;
+    winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
     setWinEventHook([](DWORD event, HWND hwnd) {
         // 某些情况下，Hook拦截不到Alt+Tab（如VMware获取焦点且虚拟机开启时，即便focus在标题栏上）
         // （GPT建议RegisterRawInputDevices，不知道有没有效果，感觉比较危险）

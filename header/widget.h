@@ -43,6 +43,7 @@ protected:
 
 public:
     explicit Widget(QWidget *parent = nullptr);
+    bool prepareListWidget();
     Q_INVOKABLE bool requestShow();
     void notifyForegroundChanged(HWND hwnd);
     HWND hWnd() { return (HWND)winId(); }
