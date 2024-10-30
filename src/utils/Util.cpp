@@ -39,6 +39,9 @@ namespace Util {
 
     // slow
     QString getProcessExePath(HWND hwnd) {
+        if (isAppFrameWindow(hwnd)) // AppFrame 用于焦点和窗口操作
+            hwnd = getAppCoreWindow(hwnd); // AppCore 用于获取exe路径
+
         DWORD processId = 0;
         GetWindowThreadProcessId(hwnd, &processId);
         if (processId == 0)
@@ -87,7 +90,7 @@ namespace Util {
     /// <br> 注意：如果自身没有焦点，可能失败
     void switchToWindow(HWND hwnd) {
         auto className = getClassName(hwnd);
-        if (className == AppCoreWindowClass) { // UWP 只能对 frame 窗口操作
+        if (className == AppCoreWindowClass) { // UWP 只能对 frame 窗口操作 TODO 本程序将不再枚举Core，可以删了
             if (auto frame = getAppFrameWindow(hwnd))
                 hwnd = frame;
         }
@@ -101,7 +104,7 @@ namespace Util {
     bool isWindowAcceptable(HWND hwnd) {
         static const QStringList BlackList_ClassName = {
                 "Progman",
-//            "Windows.UI.Core.CoreWindow", // UWP
+                "Windows.UI.Core.CoreWindow", // 过滤UWP Core，从Frame入手
                 "CEF-OSC-WIDGET",
                 "WorkerW", // explorer.exe
                 "Shell_TrayWnd" // explorer.exe
@@ -110,6 +113,7 @@ namespace Util {
                 R"(C:\Windows\System32\wscript.exe)"
         };
         static const QStringList BlackList_FileName = { // TODO by user from config
+                "Nahimic3.exe",
                 "Follower.exe",
                 "QQ Follower.exe"
         };
@@ -140,6 +144,7 @@ namespace Util {
 
     QList<HWND> enumWindows() {
         QList<HWND> list;
+        // only enum top-level windows
         EnumWindows(EnumWindowsProc, reinterpret_cast<LPARAM>(&list));
         return list;
     }
@@ -159,43 +164,35 @@ namespace Util {
     // about 2ms
     QList<HWND> listValidWindows() {
         QList<HWND> list;
-        static const QStringList BlackList_App_FileName = { // WindowsApps Windows.UI.Core.CoreWindow
-                "Nahimic3.exe",
-                "HxOutlook.exe",
-                "Video.UI.exe"
-        };
         auto winList = Util::enumWindows();
         for (auto hwnd : winList) {
+            if (!hwnd) continue;
             auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
             if (className == AppFrameWindowClass) { // UWP的父窗口
                 const auto childList = Util::enumChildWindows(hwnd);
-                hwnd = nullptr;
+                auto title = getWindowTitle(hwnd);
+                HWND coreChild = nullptr;
                 for (HWND child : childList) {
-                    // UWP的本体应该是`Windows.UI.Core.CoreWindow`，但是enumWindows有时候枚举不到
-                    // 只能通过`ApplicationFrameWindow`曲线救国
-                    // 但是有些情况下，UWP的本体又会从`ApplicationFrameWindow`中分离出来，不属于子窗口，两种情况都要处理
-                    if (!Util::getWindowTitle(child).isEmpty()) {
-                        hwnd = child;
+                    // UWP的本体应该是`Windows.UI.Core.CoreWindow`，但是enumWindows有时候枚举不到 [因为只能枚举顶层窗口]
+                    // 只能通过`ApplicationFrameWindow`曲线救国 [正道]
+                    // 但是有些情况下（最小化），UWP的本体又会从`ApplicationFrameWindow`中分离出来，不属于子窗口，两种情况都要处理
+                    if (getWindowTitle(child) == title && getClassName(child) == AppCoreWindowClass) {
+                        coreChild = child;
                         break;
                     }
                 }
-                // 如果子窗口都是无标题，说明是奇怪窗口
-            }
-
-            auto path = Util::getProcessExePath(hwnd);
-            auto fileName = QFileInfo(path).fileName();
-            // 进一步对UWP进行过滤（根据路径）
-            if (className == AppCoreWindowClass) {
-                if (path.startsWith(R"(C:\Windows\SystemApps\)")
-                    || BlackList_App_FileName.contains(fileName)) {
-                    continue;
+                if (!coreChild) {
+                    // 对于正常UWP窗口，Core只在Frame最小化时脱离AppFrame，变成top-level
+                    // 如果Core是顶层，且AppFrame不是最小化，那么就是非正常窗口，舍弃
+                    if (!IsIconic(hwnd) || !FindWindowW(LPCWSTR(AppCoreWindowClass.utf16()), LPCWSTR(title.utf16()))) {
+                        qDebug() << "#ignore UWP:" << title << hwnd;
+                        continue;
+                    }
                 }
             }
 
-            if (hwnd) {
-                list << hwnd;
-            }
+            list << hwnd;
         }
         return list;
     }
@@ -205,14 +202,34 @@ namespace Util {
     /// 这里需要查找Frame窗口的原因是，restore等操作只能对其生效！
     HWND getAppFrameWindow(HWND hwnd) {
         auto className = Util::getClassName(hwnd);
+        if (className == AppFrameWindowClass) return hwnd;
         auto title = Util::getWindowTitle(hwnd);
-        if (className == AppCoreWindowClass) {
-            if (auto res = FindWindowW(LPCWSTR(AppFrameWindowClass.utf16()), LPCWSTR(title.utf16())))
-                return res;
-            qWarning() << "Failed to find ApplicationFrameWindow of " << title << hwnd;
-            return nullptr;
-        } else
-            return hwnd;
+        if (auto res = FindWindowW(LPCWSTR(AppFrameWindowClass.utf16()), LPCWSTR(title.utf16())))
+            return res;
+        qWarning() << "Failed to find ApplicationFrameWindow of " << title << hwnd;
+        return nullptr;
+    }
+
+    HWND getAppCoreWindow(HWND hwnd) {
+        auto className = Util::getClassName(hwnd);
+        if (className == AppCoreWindowClass) return hwnd;
+        const auto childList = Util::enumChildWindows(hwnd);
+        const auto title = Util::getWindowTitle(hwnd);
+        for (HWND child : childList) { // 优先查找子窗口，某些情况下会脱离父窗口（比如最小化！）
+            if (getClassName(child) == AppCoreWindowClass && getWindowTitle(child) == title) {
+                return child;
+            }
+        }
+
+        // FindWindow只查找顶层窗口(top-level)，不会查找子窗口！
+        if (auto res = FindWindowW(LPCWSTR(AppCoreWindowClass.utf16()), LPCWSTR(title.utf16())))
+            return res;
+        qWarning() << "Failed to find ApplicationCoreWindow of " << title << hwnd;
+        return nullptr;
+    }
+
+    bool isAppFrameWindow(HWND hwnd) {
+        return Util::getClassName(hwnd) == AppFrameWindowClass;
     }
 
     /// Get 256x256 icon
@@ -391,5 +408,11 @@ namespace Util {
         painter.drawPixmap(overlayRect, overlay);
         painter.end();
         return bg;
+    }
+
+    QRect getWindowRect(HWND hwnd) {
+        RECT rect;
+        GetWindowRect(hwnd, &rect);
+        return {rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top};
     }
 } // Util
