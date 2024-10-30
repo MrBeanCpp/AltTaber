@@ -18,7 +18,7 @@ Widget::Widget(QWidget* parent) :
     lw = ui->listWidget;
     setWindowFlag(Qt::WindowStaysOnTopHint);
     setWindowFlag(Qt::FramelessWindowHint);
-    setAttribute(Qt::WA_TranslucentBackground);//设置窗口背景透明
+    setAttribute(Qt::WA_TranslucentBackground); //设置窗口背景透明 !但是会造成show()时的闪烁 和 绘制延迟(?)
     QtWin::taskbarDeleteTab(this); //删除任务栏图标
     setWindowTitle("AltTaber");
 
@@ -103,7 +103,6 @@ void Widget::showLabelForItem(QListWidgetItem* item) {
 
 void Widget::keyReleaseEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Alt) {
-        hide();
         // active selected window
         if (auto item = lw->currentItem()) {
             if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
@@ -121,6 +120,7 @@ void Widget::keyReleaseEvent(QKeyEvent* event) {
                 }
             }
         }
+        hide(); //! must hide after active target window, or focus may fallback to prev foreground window (like 网易云音乐)
     }
     QWidget::keyReleaseEvent(event);
 }
@@ -177,7 +177,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     return winGroupList;
 }
 
-bool Widget::prepareListWidget() { // TODO 会莫名检测到"设置"（"ImmersiveControlPanel\\SystemSettings.exe"）但是任务栏并没有，而且Switch + 关闭后又正常了
+bool Widget::prepareListWidget() {
     auto winGroupList = prepareWindowGroupList();
     lw->clear();
     for (auto& winGroup: winGroupList) {
