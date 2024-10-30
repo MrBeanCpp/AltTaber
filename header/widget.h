@@ -12,14 +12,17 @@ struct WindowInfo {
     QString className;
     HWND hwnd = nullptr;
 };
+
 // C++17 inline: 防止重定义
 inline QDebug operator<<(QDebug dbg, const WindowInfo& info) {
     dbg.nospace() << "WindowInfo(" << info.title << ", " << info.className << ", " << info.hwnd << ")";
     return dbg.space();
 }
+
 Q_DECLARE_METATYPE(WindowInfo) // for QVariant
 struct WindowGroup {
     WindowGroup() = default;
+
     void addWindow(const WindowInfo& window) {
         windows.append(window);
     }
@@ -28,6 +31,7 @@ struct WindowGroup {
     QIcon icon;
     QList<WindowInfo> windows;
 };
+
 Q_DECLARE_METATYPE(WindowGroup) // for QVariant
 
 QT_BEGIN_NAMESPACE
@@ -37,18 +41,21 @@ QT_END_NAMESPACE
 class Widget : public QWidget {
 Q_OBJECT
 protected:
-    void keyPressEvent(QKeyEvent *event) override;
-    void keyReleaseEvent(QKeyEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
 
 public:
-    explicit Widget(QWidget *cur = nullptr);
+    explicit Widget(QWidget* cur = nullptr);
     QList<WindowGroup> prepareWindowGroupList();
     bool prepareListWidget();
     Q_INVOKABLE bool requestShow();
     void notifyForegroundChanged(HWND hwnd);
-    HWND hWnd() { return (HWND)winId(); }
+
+    HWND hWnd() { return (HWND) winId(); }
+
     bool isForeground() { return GetForegroundWindow() == hWnd(); }
+
     ~Widget() override;
 
 private:
@@ -56,7 +63,7 @@ private:
     void showLabelForItem(QListWidgetItem* item);
 
 private:
-    Ui::Widget *ui;
+    Ui::Widget* ui;
     QListWidget* lw = nullptr;
     const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)

@@ -12,7 +12,7 @@ class IconOnlyDelegate : public QStyledItemDelegate {
     QColor hoverColor;
     int radius;
 public:
-    explicit IconOnlyDelegate(QObject *parent = nullptr,
+    explicit IconOnlyDelegate(QObject* parent = nullptr,
                               QColor selectedColor = QColor(80, 80, 80, 200),
                               QColor hoverColor = QColor(50, 50, 50, 100),
                               int radius = 8)

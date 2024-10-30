@@ -5,7 +5,8 @@
 static HWINEVENTHOOK handler = nullptr;
 static WinEventCallback callback = nullptr;
 
-void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
+void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread,
+                           DWORD dwmsEventTime) {
     if (idObject != OBJID_WINDOW) // 确保对象是窗口，而不是子对象（如按钮）
         return;
 
@@ -13,8 +14,7 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, 
         callback(event, hwnd);
 }
 
-bool setWinEventHook(WinEventCallback _callback)
-{
+bool setWinEventHook(WinEventCallback _callback) {
     if (handler) {
         qWarning() << "WinEventHook already set. Unhook first.";
         return false;
@@ -31,15 +31,14 @@ bool setWinEventHook(WinEventCallback _callback)
             0,
             0,
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
-            );
+    );
 
     qDebug() << "Set WinEventHook.";
 
     return handler != nullptr;
 }
 
-void unhookWinEvent()
-{
+void unhookWinEvent() {
     if (!handler) return;
 
     callback = nullptr;

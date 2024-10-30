@@ -16,7 +16,7 @@ namespace Util {
     QString getWindowTitle(HWND hwnd) {
         const int len = GetWindowTextLength(hwnd) + 1; // include '\0'
         if (len <= 1) return {};
-        auto *title = new wchar_t[len];
+        auto* title = new wchar_t[len];
         GetWindowText(hwnd, title, len);
         QString result = QString::fromWCharArray(title);
         delete[] title;
@@ -123,10 +123,10 @@ namespace Util {
             && !isWindowCloaked(hwnd)
             && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker
             && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性
-//            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
+            //            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
             && GetWindowTextLength(hwnd) > 0
             && !BlackList_ClassName.contains(getClassName(hwnd))
-            ) {
+                ) {
             auto path = getProcessExePath(hwnd); // 耗时操作，减少次数
             if (!BlackList_ExePath.contains(path) && !BlackList_FileName.contains(QFileInfo(path).fileName()))
                 return true;
@@ -136,7 +136,7 @@ namespace Util {
 
     BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
         if (isWindowAcceptable(hwnd)) {
-            auto *windowList = reinterpret_cast<QList<HWND> *>(lParam);
+            auto* windowList = reinterpret_cast<QList<HWND>*>(lParam);
             windowList->append(hwnd);
         }
         return TRUE;
@@ -150,7 +150,7 @@ namespace Util {
     }
 
     BOOL CALLBACK EnumChildWindowsProc(HWND hwnd, LPARAM lParam) {
-        auto *windowList = reinterpret_cast<QList<HWND> *>(lParam);
+        auto* windowList = reinterpret_cast<QList<HWND>*>(lParam);
         windowList->append(hwnd);
         return TRUE;
     }
@@ -165,7 +165,7 @@ namespace Util {
     QList<HWND> listValidWindows() {
         QList<HWND> list;
         auto winList = Util::enumWindows();
-        for (auto hwnd : winList) {
+        for (auto hwnd: winList) {
             if (!hwnd) continue;
             auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
@@ -173,7 +173,7 @@ namespace Util {
                 const auto childList = Util::enumChildWindows(hwnd);
                 auto title = getWindowTitle(hwnd);
                 HWND coreChild = nullptr;
-                for (HWND child : childList) {
+                for (HWND child: childList) {
                     // UWP的本体应该是`Windows.UI.Core.CoreWindow`，但是enumWindows有时候枚举不到 [因为只能枚举顶层窗口]
                     // 只能通过`ApplicationFrameWindow`曲线救国 [正道]
                     // 但是有些情况下（最小化），UWP的本体又会从`ApplicationFrameWindow`中分离出来，不属于子窗口，两种情况都要处理
@@ -215,7 +215,7 @@ namespace Util {
         if (className == AppCoreWindowClass) return hwnd;
         const auto childList = Util::enumChildWindows(hwnd);
         const auto title = Util::getWindowTitle(hwnd);
-        for (HWND child : childList) { // 优先查找子窗口，某些情况下会脱离父窗口（比如最小化！）
+        for (HWND child: childList) { // 优先查找子窗口，某些情况下会脱离父窗口（比如最小化！）
             if (getClassName(child) == AppCoreWindowClass && getWindowTitle(child) == title) {
                 return child;
             }
@@ -251,7 +251,7 @@ namespace Util {
         // 48x48 icons, use SHIL_EXTRALARGE
         // 256x256 icons (after Vista), use SHIL_JUMBO
         IImageList* imageList;
-        HRESULT hResult = SHGetImageList(SHIL_JUMBO, IID_IImageList, (void**)&imageList);
+        HRESULT hResult = SHGetImageList(SHIL_JUMBO, IID_IImageList, (void**) &imageList);
 
         QIcon icon;
         if (hResult == S_OK) {
@@ -298,7 +298,7 @@ namespace Util {
         QDomElement root = doc.documentElement();
         QDomElement appElement = root.firstChildElement("Applications").firstChildElement("Application");
         QDomElement visualElement = appElement.firstChildElement("uap:VisualElements");
-        for (const auto& attr : LogoAttributes) {
+        for (const auto& attr: LogoAttributes) {
             if (auto value = visualElement.attribute(attr); !value.isEmpty())
                 return value;
         }
@@ -360,7 +360,8 @@ namespace Util {
         if (auto icon = IconCache.value(path); !icon.isNull())
             return icon;
 
-        QElapsedTimer t; t.start();
+        QElapsedTimer t;
+        t.start();
         QIcon icon;
         // 包含AppxManifest.xml的目录，很可能是UWP
         // 不太好通过exe是否包含图标判断UWP，因为SystemSettings.exe居然包含图标！

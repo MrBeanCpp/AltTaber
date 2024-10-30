@@ -12,7 +12,7 @@
 #include <QDateTime>
 #include <QtWin>
 
-Widget::Widget(QWidget *parent) :
+Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
     ui->setupUi(this);
     lw = ui->listWidget;
@@ -48,11 +48,11 @@ Widget::Widget(QWidget *parent) :
     // will not take ownership of delegate
     lw->setItemDelegate(new IconOnlyDelegate(lw));
 
-    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem *cur, QListWidgetItem *) {
+    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem* cur, QListWidgetItem*) {
         if (cur) showLabelForItem(cur);
     });
 
-    connect(qApp, &QApplication::focusWindowChanged, [this](QWindow *focusWindow) {
+    connect(qApp, &QApplication::focusWindowChanged, [this](QWindow* focusWindow) {
         if (focusWindow == nullptr) // hide when lost focus
             hide();
     });
@@ -62,7 +62,7 @@ Widget::~Widget() {
     delete ui;
 }
 
-void Widget::keyPressEvent(QKeyEvent *event) {
+void Widget::keyPressEvent(QKeyEvent* event) {
     auto key = event->key();
     if (key == Qt::Key_Tab) { // switch to next or prev
         auto i = lw->currentRow();
@@ -81,7 +81,7 @@ bool Widget::forceShow() {
 }
 
 /// show App description under the icon
-void Widget::showLabelForItem(QListWidgetItem *item) {
+void Widget::showLabelForItem(QListWidgetItem* item) {
     if (!item) return;
 
     auto path = item->data(Qt::UserRole).value<WindowGroup>().exePath;
@@ -101,7 +101,7 @@ void Widget::showLabelForItem(QListWidgetItem *item) {
     ui->label->move(labelRect.topLeft());
 }
 
-void Widget::keyReleaseEvent(QKeyEvent *event) {
+void Widget::keyReleaseEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Alt) {
         hide();
         // active selected window
@@ -109,7 +109,7 @@ void Widget::keyReleaseEvent(QKeyEvent *event) {
             if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
                 WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
                 const auto lastActive = winActiveOrder.value(group.exePath, {nullptr, QDateTime()}).first;
-                for (auto& info : group.windows) {
+                for (auto& info: group.windows) {
                     if (info.hwnd == lastActive) {
                         targetWin = info;
                         break;
@@ -147,7 +147,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对�
 QList<WindowGroup> Widget::prepareWindowGroupList() {
     QMap<QString, WindowGroup> winGroupMap;
     auto list = Util::listValidWindows();
-    for (auto hwnd : list) {
+    for (auto hwnd: list) {
         if (hwnd == this->hWnd()) continue; // skip self
         auto path = Util::getProcessExePath(hwnd);
         if (path.isEmpty()) continue; // TODO 可能需要管理员权限
@@ -159,7 +159,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
                 QPixmap overlay = Util::getWindowIcon(hwnd);
                 const auto iSize = lw->iconSize();
                 QPixmap bgPixmap = icon.pixmap(iSize);
-                icon = Util::overlayIcon(bgPixmap, overlay, {{iSize.width()/2, iSize.height()/2}, iSize/2});
+                icon = Util::overlayIcon(bgPixmap, overlay, {{iSize.width() / 2, iSize.height() / 2}, iSize / 2});
             }
             winGroup.icon = icon;
         }
@@ -167,7 +167,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     }
     auto winGroupList = winGroupMap.values();
     // 按照活跃度排序
-    std::sort(winGroupList.begin(), winGroupList.end(), [this](const WindowGroup &a, const WindowGroup &b) {
+    std::sort(winGroupList.begin(), winGroupList.end(), [this](const WindowGroup& a, const WindowGroup& b) {
         auto timeA = winActiveOrder.value(a.exePath, {nullptr, QDateTime()}).second;
         auto timeB = winActiveOrder.value(b.exePath, {nullptr, QDateTime()}).second;
         if (timeA.isNull() && timeB.isNull()) return false;
@@ -180,7 +180,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
 bool Widget::prepareListWidget() { // TODO 会莫名检测到"设置"（"ImmersiveControlPanel\\SystemSettings.exe"）但是任务栏并没有，而且Switch + 关闭后又正常了
     auto winGroupList = prepareWindowGroupList();
     lw->clear();
-    for (auto& winGroup : winGroupList) {
+    for (auto& winGroup: winGroupList) {
         auto item = new QListWidgetItem(winGroup.icon, {}); // null != "", which will completely hide text area
         item->setData(Qt::UserRole, QVariant::fromValue(winGroup));
         item->setSizeHint(lw->gridSize()); // 决定了delegate的绘制区域，比grid小的话，paintRect就不居中了，而且update也不及时
@@ -211,7 +211,7 @@ bool Widget::prepareListWidget() { // TODO 会莫名检测到"设置"（"Immersi
     if (lw->count() >= 2) {
         auto foreWin = GetForegroundWindow();
         bool isFirstItemForeground = false;
-        for (auto& info : winGroupList.at(0).windows) {
+        for (auto& info: winGroupList.at(0).windows) {
             if (info.hwnd == foreWin) {
                 isFirstItemForeground = true;
                 break;

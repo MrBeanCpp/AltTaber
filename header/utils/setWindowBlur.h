@@ -2,6 +2,7 @@
 #define SETWINDOWBLUR_H
 
 #include <windows.h>
+
 typedef enum _WINDOWCOMPOSITIONATTRIB {
     WCA_UNDEFINED = 0,
     WCA_NCRENDERING_ENABLED = 1,

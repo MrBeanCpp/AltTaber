@@ -6,10 +6,9 @@
 #include "utils/Util.h"
 #include <QKeyEvent>
 
-Widget *winSwitcher = nullptr;
+Widget* winSwitcher = nullptr;
 
-LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
+LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION) {
         if (wParam == WM_SYSKEYDOWN) { // Alt & [Alt按下时的Tab]属于SysKey
             auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
@@ -42,14 +41,14 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
-    HHOOK hook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC)keyboardProc, GetModuleHandle(nullptr), 0);
+    HHOOK hook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) keyboardProc, GetModuleHandle(nullptr), 0);
     if (hook == nullptr) {
         qDebug() << "Failed to install hook";
     }
-    QObject::connect(&a, &QApplication::aboutToQuit, [hook](){
+    QObject::connect(&a, &QApplication::aboutToQuit, [hook]() {
         UnhookWindowsHookEx(hook);
         unhookWinEvent();
         qDebug() << "Hook uninstalled";
