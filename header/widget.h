@@ -61,13 +61,14 @@ public:
 private:
     bool forceShow();
     void showLabelForItem(QListWidgetItem* item);
+    auto getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime>;
 
 private:
     Ui::Widget* ui;
     QListWidget* lw = nullptr;
     const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)
-    QHash<QString, QPair<HWND, QDateTime>> winActiveOrder;
+    QHash<QString, QList<QPair<HWND, QDateTime>>> winActiveOrder;
 };
 
 

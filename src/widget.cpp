@@ -107,7 +107,8 @@ void Widget::keyReleaseEvent(QKeyEvent* event) {
         if (auto item = lw->currentItem()) {
             if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
                 WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
-                const auto lastActive = winActiveOrder.value(group.exePath, {nullptr, QDateTime()}).first;
+                const auto hwndOrder = winActiveOrder.value(group.exePath);
+                const auto lastActive = hwndOrder.isEmpty() ? nullptr : hwndOrder.last().first;
                 for (auto& info: group.windows) {
                     if (info.hwnd == lastActive) {
                         targetWin = info;
@@ -134,12 +135,12 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 }
 
 /// 通知前台窗口变化
-void Widget::notifyForegroundChanged(HWND hwnd) { // TODO 处理UWP hwnd不对应的问题！
+void Widget::notifyForegroundChanged(HWND hwnd) {
     if (hwnd == this->hWnd()) return;
     if (!Util::isWindowAcceptable(hwnd)) return;
     auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
-    winActiveOrder[path] = {hwnd, QDateTime::currentDateTime()}; // TODO 需要记录同组窗口之间的顺序
+    winActiveOrder[path] << qMakePair(hwnd, QDateTime::currentDateTime()); // TODO 需要记录同组窗口之间的顺序
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
@@ -168,8 +169,8 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     auto winGroupList = winGroupMap.values();
     // 按照活跃度排序
     std::sort(winGroupList.begin(), winGroupList.end(), [this](const WindowGroup& a, const WindowGroup& b) {
-        auto timeA = winActiveOrder.value(a.exePath, {nullptr, QDateTime()}).second;
-        auto timeB = winActiveOrder.value(b.exePath, {nullptr, QDateTime()}).second;
+        auto timeA = getLastActiveGroupWindow(a.exePath).second;
+        auto timeB = getLastActiveGroupWindow(b.exePath).second;
         if (timeA.isNull() && timeB.isNull()) return false;
         if (timeA.isValid() && timeB.isValid()) return timeA > timeB;
         return timeA.isValid();
@@ -229,4 +230,10 @@ bool Widget::prepareListWidget() {
 
 bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会导致显示 但无法操控
     return prepareListWidget() && forceShow();
+}
+
+auto Widget::getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime> {
+    auto hwndOrder = winActiveOrder.value(exePath);
+    if (hwndOrder.isEmpty()) return {nullptr, QDateTime()};
+    return hwndOrder.last();
 }
