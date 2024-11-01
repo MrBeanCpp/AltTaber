@@ -87,8 +87,8 @@ namespace Util {
     }
 
     /// 将焦点从[自身]切换至[指定窗口]
-    /// <br> 注意：如果自身没有焦点，可能失败
-    void switchToWindow(HWND hwnd) {
+    /// <br> 注意：如果自身没有焦点，可能失败 if without `force` arg
+    void switchToWindow(HWND hwnd, bool force) {
         auto className = getClassName(hwnd);
         if (className == AppCoreWindowClass) { // UWP 只能对 frame 窗口操作 TODO 本程序将不再枚举Core，可以删了
             if (auto frame = getAppFrameWindow(hwnd))
@@ -96,8 +96,25 @@ namespace Util {
         }
         if (IsIconic(hwnd))
             ShowWindow(hwnd, SW_RESTORE);
-        // 本窗口是前台窗口，因此可以随意调用该函数转移焦点
-        SetForegroundWindow(hwnd);
+        if (force) { // 强制措施(hack)
+            // 如果本进程没有前台窗口，则Windows不允许抢占焦点，此时需要hack技巧
+            // 此处模拟任意按键均可（除了LAlt，因为我们正按着）; 推测是满足了：调用进程收到了最后一个输入事件
+            // doc: https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-setforegroundwindow?redirectedfrom=MSDN
+            // ref: https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L144
+            // ref: https://stackoverflow.com/questions/10740346/setforegroundwindow-only-working-while-visual-studio-is-open
+            // ref: https://stackoverflow.com/questions/53706056/how-to-activate-window-started-by-another-process
+            // ref: [Foreground activation permission is like love: You can’t steal it, it has to be given to you]
+            //      https://devblogs.microsoft.com/oldnewthing/20090220-00/?p=19083
+            // 还有一种比较常见的方法是：AttachThreadInput
+            // 另一个技巧是： AllocConsole ?
+            // ref: https://github.com/sigoden/window-switcher/blob/0c99b27823b4e6abd21e73f505a7c2cd8c21f59b/src/utils/window.rs#L122
+            keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | 0, 0); // EXTENDEDKEY + MENU == RAlt
+            SetForegroundWindow(hwnd);
+            keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0); // 貌似只保留UP也可以
+        } else {
+            // 如果本进程has前台窗口，则可以随意调用该函数转移焦点
+            SetForegroundWindow(hwnd);
+        }
     }
 
     /// filter HWND by some rules

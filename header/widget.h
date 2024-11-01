@@ -69,6 +69,7 @@ private:
     const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)
     QHash<QString, QList<QPair<HWND, QDateTime>>> winActiveOrder;
+    QList<HWND> groupWindowOrder; // for Alt+`
 };
 
 

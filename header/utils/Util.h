@@ -12,7 +12,7 @@ namespace Util {
     QString getClassName(HWND hwnd);
     QString getProcessExePath(HWND hwnd);
     QString getFileDescription(const QString& path);
-    void switchToWindow(HWND hwnd);
+    void switchToWindow(HWND hwnd, bool force = false);
     bool isWindowAcceptable(HWND hwnd);
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);

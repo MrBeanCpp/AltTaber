@@ -64,12 +64,39 @@ Widget::~Widget() {
 
 void Widget::keyPressEvent(QKeyEvent* event) {
     auto key = event->key();
+    auto modifiers = event->modifiers();
     if (key == Qt::Key_Tab) { // switch to next or prev
         auto i = lw->currentRow();
-        bool isShiftPressed = (event->modifiers() & Qt::ShiftModifier);
+        bool isShiftPressed = (modifiers & Qt::ShiftModifier);
         // weird formula, but works (hhh)
         auto index = (i - (2 * isShiftPressed - 1) + lw->count()) % lw->count();
         lw->setCurrentRow(index);
+    } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) {
+        if (this->isForeground()) return;
+        auto curWin = GetForegroundWindow();
+        if (groupWindowOrder.isEmpty()) {
+            auto targetExe = Util::getProcessExePath(curWin);
+            auto activeOrder = winActiveOrder.value(targetExe);
+            QHash<HWND, QDateTime> activeOrdMap(activeOrder.begin(), activeOrder.end());
+            auto list = Util::listValidWindows();
+            for (auto hwnd: list) {
+                if (hwnd == this->hWnd()) continue; // skip self
+                if (Util::getProcessExePath(hwnd) != targetExe) continue;
+                groupWindowOrder << hwnd;
+            }
+            std::sort(groupWindowOrder.begin(), groupWindowOrder.end(), [&activeOrdMap](HWND a, HWND b) {
+                return activeOrdMap.value(a) > activeOrdMap.value(b);
+            }); // TODO update winActiveOrder!
+        }
+        const auto N = groupWindowOrder.size();
+        for (int i = 0; i < N && N > 1; i++) {
+            if (groupWindowOrder.at(i) == curWin) {
+                auto next = groupWindowOrder.at((i + 1) % N);
+                Util::switchToWindow(next, true);
+                qInfo() << "Switch to" << Util::getWindowTitle(next) << Util::getClassName(next);
+                return;
+            }
+        }
     }
     QWidget::keyPressEvent(event);
 }
@@ -103,6 +130,10 @@ void Widget::showLabelForItem(QListWidgetItem* item) {
 
 void Widget::keyReleaseEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Alt) {
+        if (!this->isVisible()) { // for Alt + `
+            groupWindowOrder.clear();
+            return;
+        }
         // active selected window
         if (auto item = lw->currentItem()) {
             if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {

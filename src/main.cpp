@@ -10,7 +10,7 @@ Widget* winSwitcher = nullptr;
 
 LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION) {
-        if (wParam == WM_SYSKEYDOWN) { // Alt & [Alt按下时的Tab]属于SysKey
+        if (wParam == WM_SYSKEYDOWN || wParam == WM_KEYDOWN) { // Alt & [Alt按下时的Tab]属于SysKey
             auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             // inner: `GetAsyncKeyState`, doc warns this usage, but it seems to work fine(?)
             // If it's broken, maybe we can record Modifier manually in every callback
@@ -21,9 +21,9 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
              * */
             bool isAltPressed = Util::isKeyPressed(VK_MENU);
 
-            if (pKeyBoard->vkCode == VK_TAB && isAltPressed) {
-                qDebug() << "Alt+Tab detected!";
-                if (winSwitcher) {
+            if (isAltPressed && winSwitcher) {
+                if (pKeyBoard->vkCode == VK_TAB) {
+                    qDebug() << "Alt+Tab detected!";
                     if (!winSwitcher->isForeground()) {
                         // 异步，防止阻塞；超过1s会导致被系统强制绕过，传递给下一个钩子
                         QMetaObject::invokeMethod(winSwitcher, "requestShow", Qt::QueuedConnection);
@@ -33,8 +33,21 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
                         auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier | shiftModifier);
                         QApplication::postEvent(winSwitcher, tabDownEvent); // async
                     }
+                    return 1; // 阻止事件传递
+                } else if (pKeyBoard->vkCode == VK_OEM_3) { // ~`
+                    qDebug() << "Alt+` detected!";
+                    auto event = new QKeyEvent(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::AltModifier);
+                    QApplication::postEvent(winSwitcher, event); // async
+                    return 1; // 阻止事件传递
                 }
-                return 1; // 阻止事件传递
+            }
+        } else if (wParam == WM_KEYUP) { // Amazing, Alt Down is `WM_SYSKEYDOWN`, but release is `WM_KEYUP`
+            auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+            if (pKeyBoard->vkCode == VK_LMENU && winSwitcher) {
+                qDebug() << "Alt released!";
+                auto event = new QKeyEvent(QEvent::KeyRelease, Qt::Key_Alt, Qt::NoModifier);
+                QApplication::postEvent(winSwitcher, event); // async
+                // not block
             }
         }
     }
@@ -62,7 +75,7 @@ int main(int argc, char* argv[]) {
         // 此时需要通过监控前台窗口检测系统的任务切换窗口唤出，并弹出本程序
         // 一旦焦点脱离VMWare，Hook就能正常工作，接下里就可以正常拦截Alt+Tab
         // 而再次连续按下TAB（Alt按住的情况下），也不会出现反复弹出系统任务切换窗口的情况（如果不进行Hook拦截就会这样，所以两种方法结合使用）
-        if (event == EVENT_SYSTEM_FOREGROUND && hwnd == GetForegroundWindow()) { // 前台窗口变化
+        if (event == EVENT_SYSTEM_FOREGROUND && hwnd == GetForegroundWindow()) { // 前台窗口变化 TODO 记录窗口关闭事件
             // 使用Alt+TAB呼出任务切换窗口时，会触发两次EVENT_SYSTEM_FOREGROUND事件
             // 第二次是在目标窗口已经切换到前台后触发的，非常诡异
             // 可以用 GetForegroundWindow() || isAltPressed 来二次确认
