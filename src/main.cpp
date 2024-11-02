@@ -36,7 +36,8 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
                     return 1; // 阻止事件传递
                 } else if (pKeyBoard->vkCode == VK_OEM_3) { // ~`
                     qDebug() << "Alt+` detected!";
-                    auto event = new QKeyEvent(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::AltModifier);
+                    auto shiftModifier = Util::isKeyPressed(VK_SHIFT) ? Qt::ShiftModifier : Qt::NoModifier;
+                    auto event = new QKeyEvent(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::AltModifier | shiftModifier);
                     QApplication::postEvent(winSwitcher, event); // async
                     return 1; // 阻止事件传递
                 }

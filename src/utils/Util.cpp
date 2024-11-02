@@ -214,6 +214,17 @@ namespace Util {
         return list;
     }
 
+    /// list windows filtered by exePath
+    QList<HWND> listValidWindows(const QString& exePath) {
+        QList<HWND> windows;
+        auto winList = listValidWindows();
+        for (auto hwnd: winList) {
+            if (getProcessExePath(hwnd) == exePath)
+                windows << hwnd;
+        }
+        return windows;
+    }
+
     /// 对Core子窗口进行hwnd之类的操作之后，就会脱离原本的ApplicationFrameWindow，所以很难通过关联性去查找了<br>
     /// 这种情况下，通过标题和类名比较好<br>
     /// 这里需要查找Frame窗口的原因是，restore等操作只能对其生效！

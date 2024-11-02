@@ -17,6 +17,7 @@ namespace Util {
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
+    QList<HWND> listValidWindows(const QString& exePath);
     HWND getAppFrameWindow(HWND hwnd);
     HWND getAppCoreWindow(HWND hwnd);
     bool isAppFrameWindow(HWND hwnd);

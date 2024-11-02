@@ -73,30 +73,12 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         lw->setCurrentRow(index);
     } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) {
         if (this->isForeground()) return;
-        auto curWin = GetForegroundWindow();
+        auto foreWin = GetForegroundWindow();
         if (groupWindowOrder.isEmpty()) {
-            auto targetExe = Util::getProcessExePath(curWin);
-            auto activeOrder = winActiveOrder.value(targetExe);
-            QHash<HWND, QDateTime> activeOrdMap(activeOrder.begin(), activeOrder.end());
-            auto list = Util::listValidWindows();
-            for (auto hwnd: list) {
-                if (hwnd == this->hWnd()) continue; // skip self
-                if (Util::getProcessExePath(hwnd) != targetExe) continue;
-                groupWindowOrder << hwnd;
-            }
-            std::sort(groupWindowOrder.begin(), groupWindowOrder.end(), [&activeOrdMap](HWND a, HWND b) {
-                return activeOrdMap.value(a) > activeOrdMap.value(b);
-            }); // TODO update winActiveOrder!
+            auto targetExe = Util::getProcessExePath(foreWin);
+            groupWindowOrder = buildGroupWindowOrder(targetExe);
         }
-        const auto N = groupWindowOrder.size();
-        for (int i = 0; i < N && N > 1; i++) {
-            if (groupWindowOrder.at(i) == curWin) {
-                auto next = groupWindowOrder.at((i + 1) % N);
-                Util::switchToWindow(next, true);
-                qInfo() << "Switch to" << Util::getWindowTitle(next) << Util::getClassName(next);
-                return;
-            }
-        }
+        rotateWindowInGroup(groupWindowOrder, foreWin, !(modifiers & Qt::ShiftModifier));
     }
     QWidget::keyPressEvent(event);
 }
@@ -166,7 +148,7 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 }
 
 /// 通知前台窗口变化
-void Widget::notifyForegroundChanged(HWND hwnd) {
+void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown时，关闭前台更新通知
     if (hwnd == this->hWnd()) return;
     if (!Util::isWindowAcceptable(hwnd)) return;
     auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
@@ -267,4 +249,31 @@ auto Widget::getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDa
     auto hwndOrder = winActiveOrder.value(exePath);
     if (hwndOrder.isEmpty()) return {nullptr, QDateTime()};
     return hwndOrder.last();
+}
+
+/// group by exePath, sort by active order (last active first)
+QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
+    auto windows = Util::listValidWindows(exePath); // filter by path
+    auto activeOrder = winActiveOrder.value(exePath);
+    QHash<HWND, QDateTime> activeOrdMap(activeOrder.begin(), activeOrder.end());
+    // sort by active order
+    std::sort(windows.begin(), windows.end(), [&activeOrdMap](HWND a, HWND b) {
+        return activeOrdMap.value(a) > activeOrdMap.value(b);
+    }); // TODO update winActiveOrder!
+    return windows;
+}
+
+/// switch to next(forward)(older) or prev window in group
+HWND Widget::rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward) {
+    const auto N = windows.size();
+    for (int i = 0; i < N && N > 1; i++) {
+        if (windows.at(i) == current) {
+            auto next_i = forward ? (i + 1) : (i - 1);
+            auto next = windows.at((next_i + N) % N);
+            Util::switchToWindow(next, true);
+            qInfo() << "Switch to" << Util::getWindowTitle(next) << Util::getClassName(next);
+            return next;
+        }
+    }
+    return nullptr;
 }
