@@ -47,6 +47,7 @@ Widget::Widget(QWidget* parent) :
     // 但是采用delegate后，就没必要了
     // will not take ownership of delegate
     lw->setItemDelegate(new IconOnlyDelegate(lw));
+    lw->installEventFilter(this);
 
     connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem* cur, QListWidgetItem*) {
         if (cur) showLabelForItem(cur);
@@ -90,11 +91,14 @@ bool Widget::forceShow() { // TODO 显示有闪烁 因为Qt::WA_TranslucentBackg
 }
 
 /// show App description under the icon
-void Widget::showLabelForItem(QListWidgetItem* item) {
+void Widget::showLabelForItem(QListWidgetItem* item, QString text) {
     if (!item) return;
 
-    auto path = item->data(Qt::UserRole).value<WindowGroup>().exePath;
-    ui->label->setText(Util::getFileDescription(path));
+    if (text.isNull()) {
+        auto path = item->data(Qt::UserRole).value<WindowGroup>().exePath;
+        text = Util::getFileDescription(path);
+    }
+    ui->label->setText(text);
     ui->label->adjustSize();
 
     auto itemRect = lw->visualItemRect(item);
@@ -112,29 +116,28 @@ void Widget::showLabelForItem(QListWidgetItem* item) {
 
 void Widget::keyReleaseEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Alt) {
-        if (!this->isVisible()) { // for Alt + `
-            groupWindowOrder.clear();
-            return;
-        }
-        // active selected window
-        if (auto item = lw->currentItem()) {
-            if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
-                WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
-                const auto hwndOrder = winActiveOrder.value(group.exePath);
-                const auto lastActive = hwndOrder.isEmpty() ? nullptr : hwndOrder.last().first;
-                for (auto& info: group.windows) {
-                    if (info.hwnd == lastActive) {
-                        targetWin = info;
-                        break;
+        groupWindowOrder.clear(); // for Alt + `
+        if (this->isVisible()) {
+            // active selected window
+            if (auto item = lw->currentItem()) {
+                if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
+                    WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
+                    const auto hwndOrder = winActiveOrder.value(group.exePath);
+                    const auto lastActive = hwndOrder.isEmpty() ? nullptr : hwndOrder.last().first;
+                    for (auto& info: group.windows) {
+                        if (info.hwnd == lastActive) {
+                            targetWin = info;
+                            break;
+                        }
+                    }
+                    if (targetWin.hwnd) {
+                        Util::switchToWindow(targetWin.hwnd);
+                        qInfo() << "Switch to" << targetWin << group.exePath;
                     }
                 }
-                if (targetWin.hwnd) {
-                    Util::switchToWindow(targetWin.hwnd);
-                    qInfo() << "Switch to" << targetWin << group.exePath;
-                }
             }
+            hide(); //! must hide after active target window, or focus may fallback to prev foreground window (like 网易云音乐)
         }
-        hide(); //! must hide after active target window, or focus may fallback to prev foreground window (like 网易云音乐)
     }
     QWidget::keyReleaseEvent(event);
 }
@@ -153,7 +156,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown�
     if (!Util::isWindowAcceptable(hwnd)) return;
     auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
-    winActiveOrder[path] << qMakePair(hwnd, QDateTime::currentDateTime()); // TODO 需要记录同组窗口之间的顺序
+    winActiveOrder[path] << qMakePair(hwnd, QDateTime::currentDateTime()); // TODO QList改成QHash！，自动去重！
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
@@ -263,14 +266,53 @@ QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
     return windows;
 }
 
-/// switch to next(forward)(older) or prev window in group
+bool Widget::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == lw && event->type() == QEvent::Wheel) {
+        auto* wheelEvent = static_cast<QWheelEvent*>(event);
+        auto cursorPos = wheelEvent->position().toPoint();
+        if (auto item = lw->itemAt(cursorPos)) {
+            if (lw->currentItem() != item)
+                lw->setCurrentItem(item);
+            auto windowGroup = item->data(Qt::UserRole).value<WindowGroup>();
+            if (windowGroup.windows.size() <= 1) return false;
+
+            static QListWidgetItem* lastItem = nullptr;
+            static HWND lastActive = nullptr;
+            if (lastItem != item) { // Alt+Tab也可能造成切换
+                lastItem = item;
+                lastActive = nullptr;
+                groupWindowOrder.clear();
+            }
+            auto targetExe = windowGroup.exePath;
+            if (groupWindowOrder.isEmpty())
+                groupWindowOrder = buildGroupWindowOrder(targetExe);
+            if (!lastActive) { // first time
+                if (!(lastActive = getLastActiveGroupWindow(targetExe).first))
+                    lastActive = groupWindowOrder.first(); // 没有lastActive记录，就随便选一个
+                Util::bringWindowToTop(lastActive);
+            } else // ListWidget的方向改成了从左到右，所以滚轮方向从y()变成x()了
+                lastActive = rotateWindowInGroup(groupWindowOrder, lastActive, wheelEvent->angleDelta().x() > 0);
+            notifyForegroundChanged(lastActive);
+            showLabelForItem(item, Util::getWindowTitle(lastActive));
+
+            return true; // stop propagation
+        }
+    }
+    return false;
+}
+
+/// switch to next(forward)(older) or prev window in group<br>
+/// if `this->isVisible()`, not activate target
 HWND Widget::rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward) {
     const auto N = windows.size();
     for (int i = 0; i < N && N > 1; i++) {
         if (windows.at(i) == current) {
             auto next_i = forward ? (i + 1) : (i - 1);
             auto next = windows.at((next_i + N) % N);
-            Util::switchToWindow(next, true);
+            if (this->isVisible())
+                Util::bringWindowToTop(next); // without activate
+            else
+                Util::switchToWindow(next, true);
             qInfo() << "Switch to" << Util::getWindowTitle(next) << Util::getClassName(next);
             return next;
         }

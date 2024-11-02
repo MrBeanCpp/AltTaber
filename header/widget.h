@@ -57,13 +57,14 @@ public:
     bool isForeground() { return GetForegroundWindow() == hWnd(); }
 
     ~Widget() override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     bool forceShow();
-    void showLabelForItem(QListWidgetItem* item);
+    void showLabelForItem(QListWidgetItem* item, QString text = QString());
     auto getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime>;
     QList<HWND> buildGroupWindowOrder(const QString& exePath);
-    static HWND rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
+    HWND rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
 
 private:
     Ui::Widget* ui;
@@ -71,7 +72,7 @@ private:
     const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)
     QHash<QString, QList<QPair<HWND, QDateTime>>> winActiveOrder;
-    QList<HWND> groupWindowOrder; // for Alt+`
+    QList<HWND> groupWindowOrder; // for Alt+` 同组窗口切换
 };
 
 

@@ -86,14 +86,13 @@ namespace Util {
         return desc;
     }
 
+    bool isTopMost(HWND hwnd) {
+        return GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST;
+    }
+
     /// 将焦点从[自身]切换至[指定窗口]
     /// <br> 注意：如果自身没有焦点，可能失败 if without `force` arg
     void switchToWindow(HWND hwnd, bool force) {
-        auto className = getClassName(hwnd);
-        if (className == AppCoreWindowClass) { // UWP 只能对 frame 窗口操作 TODO 本程序将不再枚举Core，可以删了
-            if (auto frame = getAppFrameWindow(hwnd))
-                hwnd = frame;
-        }
         if (IsIconic(hwnd))
             ShowWindow(hwnd, SW_RESTORE);
         if (force) { // 强制措施(hack)
@@ -115,6 +114,18 @@ namespace Util {
             // 如果本进程has前台窗口，则可以随意调用该函数转移焦点
             SetForegroundWindow(hwnd);
         }
+    }
+
+    /// bring to Top(Z-Order), but not activate it<br>
+    /// note: ignore topmost window
+    void bringWindowToTop(HWND hwnd) {
+        if (isTopMost(hwnd)) return;
+        if (IsIconic(hwnd))
+            ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        // HWND_TOP not works well
+        // ref: https://stackoverflow.com/questions/5257977/how-to-bring-other-app-window-to-front-without-activating-it
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     /// filter HWND by some rules
