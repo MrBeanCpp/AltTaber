@@ -79,7 +79,10 @@ void Widget::keyPressEvent(QKeyEvent* event) {
             auto targetExe = Util::getProcessExePath(foreWin);
             groupWindowOrder = buildGroupWindowOrder(targetExe);
         }
-        rotateWindowInGroup(groupWindowOrder, foreWin, !(modifiers & Qt::ShiftModifier));
+        if (auto nextWin = rotateWindowInGroup(groupWindowOrder, foreWin, !(modifiers & Qt::ShiftModifier))) {
+            Util::switchToWindow(nextWin, true);
+            qInfo() << "Switch to" << Util::getWindowTitle(nextWin) << Util::getClassName(nextWin);
+        }
     }
     QWidget::keyPressEvent(event);
 }
@@ -277,23 +280,41 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
             if (windowGroup.windows.size() <= 1) return false;
 
             static QListWidgetItem* lastItem = nullptr;
-            static HWND lastActive = nullptr;
+            static HWND hwnd = nullptr;
             if (lastItem != item) { // Alt+Tab也可能造成切换
                 lastItem = item;
-                lastActive = nullptr;
+                hwnd = nullptr;
                 groupWindowOrder.clear();
             }
             auto targetExe = windowGroup.exePath;
+            static bool isLastRollUp = true;
+            bool isRollUp = wheelEvent->angleDelta().x() > 0; // ListWidget的方向改成了从左到右，所以滚轮方向从y()变成x()了
             if (groupWindowOrder.isEmpty())
                 groupWindowOrder = buildGroupWindowOrder(targetExe);
-            if (!lastActive) { // first time
-                if (!(lastActive = getLastActiveGroupWindow(targetExe).first))
-                    lastActive = groupWindowOrder.first(); // 没有lastActive记录，就随便选一个
-                Util::bringWindowToTop(lastActive);
-            } else // ListWidget的方向改成了从左到右，所以滚轮方向从y()变成x()了
-                lastActive = rotateWindowInGroup(groupWindowOrder, lastActive, wheelEvent->angleDelta().x() > 0);
-            notifyForegroundChanged(lastActive);
-            showLabelForItem(item, Util::getWindowTitle(lastActive));
+
+            if (!hwnd) { // first time
+                if (!(hwnd = getLastActiveGroupWindow(targetExe).first))
+                    hwnd = groupWindowOrder.first(); // 没有lastActive记录，就随便选一个
+            } else { // select next window
+                if (isLastRollUp == isRollUp) // 滚轮方向切换时，不轮换窗口
+                    hwnd = rotateWindowInGroup(groupWindowOrder, hwnd, isRollUp);
+            }
+            isLastRollUp = isRollUp;
+
+            HWND nextFocus = hwnd; // this隐藏后的焦点备选窗口, for `swtichToWindow` after AltUp
+            if (isRollUp) {
+                Util::bringWindowToTop(hwnd); // wihout activate
+            } else {
+                if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
+                    ShowWindow(normal, SW_SHOWMINNOACTIVE); // minimize
+                    hwnd = normal;
+                    nextFocus = hwnd;
+                }
+                if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false))
+                    nextFocus = normal; // 备选焦点切换为下一个非最小化窗口 after AltUp
+            }
+            notifyForegroundChanged(nextFocus);
+            showLabelForItem(item, Util::getWindowTitle(nextFocus));
 
             return true; // stop propagation
         }
@@ -301,21 +322,24 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
     return false;
 }
 
-/// switch to next(forward)(older) or prev window in group<br>
-/// if `this->isVisible()`, not activate target
+/// select next(forward)(older) or prev window in group<br>
+/// Do nothing, but select HWND
 HWND Widget::rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward) {
     const auto N = windows.size();
     for (int i = 0; i < N && N > 1; i++) {
         if (windows.at(i) == current) {
             auto next_i = forward ? (i + 1) : (i - 1);
             auto next = windows.at((next_i + N) % N);
-            if (this->isVisible())
-                Util::bringWindowToTop(next); // without activate
-            else
-                Util::switchToWindow(next, true);
-            qInfo() << "Switch to" << Util::getWindowTitle(next) << Util::getClassName(next);
             return next;
         }
     }
     return nullptr;
+}
+
+/// Select next (including `current`) normal (!minimized) window in group<br>
+/// return nullptr if all minimized
+HWND Widget::rotateNormalWindowInGroup(const QList<HWND>& windows, HWND current, bool forward) {
+    for (int i = 0; IsIconic(current) && i < windows.size(); i++) // skip minimized
+        current = rotateWindowInGroup(windows, current, forward);
+    return IsIconic(current) ? nullptr : current;
 }

@@ -64,7 +64,8 @@ private:
     void showLabelForItem(QListWidgetItem* item, QString text = QString());
     auto getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime>;
     QList<HWND> buildGroupWindowOrder(const QString& exePath);
-    HWND rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
+    static HWND rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
+    static HWND rotateNormalWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
 
 private:
     Ui::Widget* ui;
