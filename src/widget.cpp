@@ -54,8 +54,13 @@ Widget::Widget(QWidget* parent) :
     });
 
     connect(qApp, &QApplication::focusWindowChanged, [this](QWindow* focusWindow) {
-        if (focusWindow == nullptr) // hide when lost focus
-            hide();
+        if (focusWindow == nullptr) {
+            if (!this->underMouse()) // hide when lost focus & mouse outside (means user choose to)
+                hide();
+            else { // Windows Terminal will do
+                qWarning() << "Someone tried to steal focus!";
+            }
+        }
     });
 }
 
