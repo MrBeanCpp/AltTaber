@@ -121,12 +121,14 @@ namespace Util {
     /// note: ignore topmost window
     void bringWindowToTop(HWND hwnd) { // 不过貌似有时候，特别是Windows Terminal，会抢夺焦点
         if (isTopMost(hwnd)) return;
+        LockSetForegroundWindow(LSFW_LOCK); // avoid focus stolen
         if (IsIconic(hwnd))
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
         // HWND_TOP not works well
         // ref: https://stackoverflow.com/questions/5257977/how-to-bring-other-app-window-to-front-without-activating-it
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        LockSetForegroundWindow(LSFW_UNLOCK);
     }
 
     /// filter HWND by some rules
