@@ -275,14 +275,14 @@ QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
 }
 
 bool Widget::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == lw && event->type() == QEvent::Wheel) {
+    if (watched == lw && event->type() == QEvent::Wheel) { // TODO 适配全键盘操作 J K
         auto* wheelEvent = static_cast<QWheelEvent*>(event);
         auto cursorPos = wheelEvent->position().toPoint();
         if (auto item = lw->itemAt(cursorPos)) {
             if (lw->currentItem() != item)
                 lw->setCurrentItem(item);
             auto windowGroup = item->data(Qt::UserRole).value<WindowGroup>();
-            if (windowGroup.windows.size() <= 1) return false;
+            if (windowGroup.windows.isEmpty()) return false;
 
             static QListWidgetItem* lastItem = nullptr;
             static HWND hwnd = nullptr;
@@ -307,7 +307,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
             isLastRollUp = isRollUp;
 
             HWND nextFocus = hwnd; // this隐藏后的焦点备选窗口, for `swtichToWindow` after AltUp
-            if (isRollUp) {
+            if (isRollUp) { // FIXME Windows Terminal有时候出不来, & 有时候me会被覆盖！
                 Util::bringWindowToTop(hwnd); // wihout activate
             } else {
                 if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
@@ -331,7 +331,8 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
 /// Do nothing, but select HWND
 HWND Widget::rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward) {
     const auto N = windows.size();
-    for (int i = 0; i < N && N > 1; i++) {
+    if (N == 1) return windows.first();
+    for (int i = 0; i < N; i++) {
         if (windows.at(i) == current) {
             auto next_i = forward ? (i + 1) : (i - 1);
             auto next = windows.at((next_i + N) % N);

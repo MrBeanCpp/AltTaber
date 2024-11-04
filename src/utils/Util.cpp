@@ -119,7 +119,7 @@ namespace Util {
 
     /// bring to Top(Z-Order), but not activate it<br>
     /// note: ignore topmost window
-    void bringWindowToTop(HWND hwnd) {
+    void bringWindowToTop(HWND hwnd) { // 不过貌似有时候，特别是Windows Terminal，会抢夺焦点
         if (isTopMost(hwnd)) return;
         if (IsIconic(hwnd))
             ShowWindow(hwnd, SW_SHOWNOACTIVATE);
