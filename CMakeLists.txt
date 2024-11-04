@@ -29,7 +29,11 @@ add_executable(Win_Switcher src/main.cpp
         header/utils/setWindowBlur.h
         src/utils/setWindowBlur.cpp
         src/utils/IconOnlyDelegate.cpp
-        header/utils/IconOnlyDelegate.h)
+        header/utils/IconOnlyDelegate.h
+        header/utils/uiautomation.h
+        src/utils/uiautomation.cpp
+        src/utils/AppUtil.cpp
+        header/utils/AppUtil.h)
 target_link_libraries(Win_Switcher
         Qt5::Core
         Qt5::Gui
@@ -51,4 +55,4 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE "/utf-8")
-endif()
+endif ()
