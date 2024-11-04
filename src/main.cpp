@@ -5,6 +5,8 @@
 #include "utils/winEventHook.h"
 #include "utils/Util.h"
 #include <QKeyEvent>
+#include "utils/uiautomation.h"
+#include "utils/AppUtil.h"
 
 Widget* winSwitcher = nullptr;
 
@@ -55,17 +57,43 @@ LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
+LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode == HC_ACTION && wParam == WM_MOUSEWHEEL) {
+        auto* data = (MSLLHOOKSTRUCT*) lParam;
+        HWND hwnd = WindowFromPoint(data->pt);
+        HWND topLevelHwnd = GetAncestor(hwnd, GA_ROOT);
+        if (Util::getClassName(topLevelHwnd) == "Shell_TrayWnd") {
+            auto delta = (short) HIWORD(data->mouseData);
+            qDebug() << delta << Util::getClassName(topLevelHwnd);
+
+            auto el = UIAutomation::getElementUnderMouse();
+            if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
+                auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
+                qDebug() << el.getName() << el.getClassName() << AppUtil::getExePathFromAppId(appid);
+            }
+
+//        QPoint pos(data->pt.x, data->pt.y);
+//        qApp->postEvent(receiver, new QWheelEvent(pos, delta, Qt::NoButton, Qt::NoModifier));
+        }
+    }
+    return CallNextHookEx(nullptr, nCode, wParam, lParam);
+}
+
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
-    HHOOK hook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) keyboardProc, GetModuleHandle(nullptr), 0);
-    if (hook == nullptr) {
-        qDebug() << "Failed to install hook";
-    }
-    QObject::connect(&a, &QApplication::aboutToQuit, [hook]() {
-        UnhookWindowsHookEx(hook);
+    HHOOK h_keyboard = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) keyboardProc, GetModuleHandle(nullptr), 0);
+    HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
+    if (h_keyboard == nullptr)
+        qDebug() << "Failed to install h_keyboard";
+    if (h_mouse == nullptr)
+        qDebug() << "Failed to install h_mouse";
+    QObject::connect(&a, &QApplication::aboutToQuit, [h_keyboard, h_mouse]() {
+        UnhookWindowsHookEx(h_keyboard);
+        UnhookWindowsHookEx(h_mouse);
         unhookWinEvent();
         qDebug() << "Hook uninstalled";
+        UIAutomation::cleanup();
     });
 
     winSwitcher = new Widget;
