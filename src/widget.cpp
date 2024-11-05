@@ -307,8 +307,8 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
             isLastRollUp = isRollUp;
 
             HWND nextFocus = hwnd; // this隐藏后的焦点备选窗口, for `swtichToWindow` after AltUp
-            if (isRollUp) { // FIXME Windows Terminal有时候出不来, & 有时候me会被覆盖！
-                Util::bringWindowToTop(hwnd); // wihout activate
+            if (isRollUp) {
+                Util::bringWindowToTop(hwnd, this->hWnd()); // wihout activate
             } else {
                 if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
                     ShowWindow(normal, SW_SHOWMINNOACTIVE); // minimize

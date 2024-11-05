@@ -14,7 +14,7 @@ namespace Util {
     QString getFileDescription(const QString& path);
     bool isTopMost(HWND hwnd);
     void switchToWindow(HWND hwnd, bool force = false);
-    void bringWindowToTop(HWND hwnd);
+    void bringWindowToTop(HWND hwnd, HWND hWndInsertAfter = HWND_TOPMOST);
     bool isWindowAcceptable(HWND hwnd);
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
