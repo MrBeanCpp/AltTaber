@@ -33,7 +33,9 @@ add_executable(Win_Switcher src/main.cpp
         header/utils/uiautomation.h
         src/utils/uiautomation.cpp
         src/utils/AppUtil.cpp
-        header/utils/AppUtil.h)
+        header/utils/AppUtil.h
+        src/utils/KeyboardHooker.cpp
+        header/utils/KeyboardHooker.h)
 target_link_libraries(Win_Switcher
         Qt5::Core
         Qt5::Gui

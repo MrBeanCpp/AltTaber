@@ -4,58 +4,11 @@
 #include "../header/widget.h"
 #include "utils/winEventHook.h"
 #include "utils/Util.h"
-#include <QKeyEvent>
 #include "utils/uiautomation.h"
 #include "utils/AppUtil.h"
+#include "utils/KeyboardHooker.h"
 
 Widget* winSwitcher = nullptr;
-
-LRESULT keyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode == HC_ACTION) {
-        if (wParam == WM_SYSKEYDOWN || wParam == WM_KEYDOWN) { // Alt & [Alt按下时的Tab]属于SysKey
-            auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            // inner: `GetAsyncKeyState`, doc warns this usage, but it seems to work fine(?)
-            // If it's broken, maybe we can record Modifier manually in every callback
-            /* Note from Docs:
-             * When this callback function is called in response to a change in the state of a key,
-             * the callback function is called before the asynchronous state of the key is updated.
-             * Consequently, the asynchronous state of the key cannot be determined by calling GetAsyncKeyState from within the callback function.
-             * */
-            bool isAltPressed = Util::isKeyPressed(VK_MENU);
-
-            if (isAltPressed && winSwitcher) {
-                if (pKeyBoard->vkCode == VK_TAB) {
-                    qDebug() << "Alt+Tab detected!";
-                    if (!winSwitcher->isForeground()) {
-                        // 异步，防止阻塞；超过1s会导致被系统强制绕过，传递给下一个钩子
-                        QMetaObject::invokeMethod(winSwitcher, "requestShow", Qt::QueuedConnection);
-                    } else {
-                        // 转发Alt+Tab给Widget
-                        auto shiftModifier = Util::isKeyPressed(VK_SHIFT) ? Qt::ShiftModifier : Qt::NoModifier;
-                        auto tabDownEvent = new QKeyEvent(QEvent::KeyPress, Qt::Key_Tab, Qt::AltModifier | shiftModifier);
-                        QApplication::postEvent(winSwitcher, tabDownEvent); // async
-                    }
-                    return 1; // 阻止事件传递
-                } else if (pKeyBoard->vkCode == VK_OEM_3) { // ~`
-                    qDebug() << "Alt+` detected!";
-                    auto shiftModifier = Util::isKeyPressed(VK_SHIFT) ? Qt::ShiftModifier : Qt::NoModifier;
-                    auto event = new QKeyEvent(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::AltModifier | shiftModifier);
-                    QApplication::postEvent(winSwitcher, event); // async
-                    return 1; // 阻止事件传递
-                }
-            }
-        } else if (wParam == WM_KEYUP) { // Amazing, Alt Down is `WM_SYSKEYDOWN`, but release is `WM_KEYUP`
-            auto* pKeyBoard = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            if (pKeyBoard->vkCode == VK_LMENU && winSwitcher) {
-                qDebug() << "Alt released!";
-                auto event = new QKeyEvent(QEvent::KeyRelease, Qt::Key_Alt, Qt::NoModifier);
-                QApplication::postEvent(winSwitcher, event); // async
-                // not block
-            }
-        }
-    }
-    return CallNextHookEx(nullptr, nCode, wParam, lParam);
-}
 
 LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION && wParam == WM_MOUSEWHEEL) {
@@ -82,15 +35,10 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
-    // 回调函数的执行与消息循环密切相关，在Get/PeekMessage时，系统才会触发回调; [https://learn.microsoft.com/en-us/windows/win32/winmsg/mouseproc]
-    HHOOK h_keyboard = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) keyboardProc, GetModuleHandle(nullptr), 0);
     HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
-    if (h_keyboard == nullptr)
-        qDebug() << "Failed to install h_keyboard";
     if (h_mouse == nullptr)
         qDebug() << "Failed to install h_mouse";
-    QObject::connect(&a, &QApplication::aboutToQuit, [h_keyboard, h_mouse]() {
-        UnhookWindowsHookEx(h_keyboard);
+    QObject::connect(&a, &QApplication::aboutToQuit, [h_mouse]() {
         UnhookWindowsHookEx(h_mouse);
         unhookWinEvent();
         qDebug() << "Hook uninstalled";
@@ -99,6 +47,9 @@ int main(int argc, char* argv[]) {
 
     winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
+
+    KeyboardHooker kbHooker(winSwitcher);
+
     setWinEventHook([](DWORD event, HWND hwnd) {
         // 某些情况下，Hook拦截不到Alt+Tab（如VMware获取焦点且虚拟机开启时，即便focus在标题栏上）
         // （GPT建议RegisterRawInputDevices，不知道有没有效果，感觉比较危险）
