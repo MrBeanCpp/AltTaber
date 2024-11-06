@@ -129,9 +129,8 @@ void Widget::keyReleaseEvent(QKeyEvent* event) {
             // active selected window
             if (auto item = lw->currentItem()) {
                 if (auto group = item->data(Qt::UserRole).value<WindowGroup>(); !group.windows.empty()) {
-                    WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActive不可用情况下）
-                    const auto hwndOrder = winActiveOrder.value(group.exePath);
-                    const auto lastActive = hwndOrder.isEmpty() ? nullptr : hwndOrder.last().first;
+                    WindowInfo targetWin = group.windows.at(0); // TODO 需要排序（lastActiveWindow 被关闭情况下）
+                    const auto lastActive = getLastActiveGroupWindow(group.exePath).first;
                     for (auto& info: group.windows) {
                         if (info.hwnd == lastActive) {
                             targetWin = info;
@@ -164,7 +163,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown�
     if (!Util::isWindowAcceptable(hwnd)) return;
     auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
-    winActiveOrder[path] << qMakePair(hwnd, QDateTime::currentDateTime()); // TODO QList改成QHash！，自动去重！
+    winActiveOrder[path].insert(hwnd, QDateTime::currentDateTime());
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
@@ -259,14 +258,15 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
 auto Widget::getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime> {
     auto hwndOrder = winActiveOrder.value(exePath);
     if (hwndOrder.isEmpty()) return {nullptr, QDateTime()};
-    return hwndOrder.last();
+    // QHash & QMap deref to value(QDateTime) rather than QPair
+    auto iter = std::max_element(hwndOrder.begin(), hwndOrder.end());
+    return {iter.key(), iter.value()};
 }
 
 /// group by exePath, sort by active order (last active first)
 QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
     auto windows = Util::listValidWindows(exePath); // filter by path
-    auto activeOrder = winActiveOrder.value(exePath);
-    QHash<HWND, QDateTime> activeOrdMap(activeOrder.begin(), activeOrder.end());
+    QHash<HWND, QDateTime> activeOrdMap = winActiveOrder.value(exePath);
     // sort by active order
     std::sort(windows.begin(), windows.end(), [&activeOrdMap](HWND a, HWND b) {
         return activeOrdMap.value(a) > activeOrdMap.value(b);
@@ -320,6 +320,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
             }
             notifyForegroundChanged(nextFocus);
             showLabelForItem(item, Util::getWindowTitle(nextFocus));
+            qDebug() << "Wheel" << isRollUp << Util::getWindowTitle(nextFocus) << hwnd;
 
             return true; // stop propagation
         }

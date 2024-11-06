@@ -82,6 +82,7 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
+    // 回调函数的执行与消息循环密切相关，在Get/PeekMessage时，系统才会触发回调; [https://learn.microsoft.com/en-us/windows/win32/winmsg/mouseproc]
     HHOOK h_keyboard = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) keyboardProc, GetModuleHandle(nullptr), 0);
     HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
     if (h_keyboard == nullptr)
