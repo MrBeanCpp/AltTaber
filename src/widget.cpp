@@ -193,8 +193,8 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     auto winGroupList = winGroupMap.values();
     // 按照活跃度排序
     std::sort(winGroupList.begin(), winGroupList.end(), [this](const WindowGroup& a, const WindowGroup& b) {
-        auto timeA = getLastActiveGroupWindow(a.exePath).second;
-        auto timeB = getLastActiveGroupWindow(b.exePath).second;
+        auto timeA = getLastValidActiveGroupWindow(a).second;
+        auto timeB = getLastValidActiveGroupWindow(b).second;
         if (timeA.isNull() && timeB.isNull()) return false;
         if (timeA.isValid() && timeB.isValid()) return timeA > timeB;
         return timeA.isValid();
@@ -256,6 +256,7 @@ bool Widget::requestShow() { // TODO 当前台是开始菜单（Win）时，会�
     return prepareListWidget() && forceShow();
 }
 
+/// Warning: the `HWND` not guarantee to be valid (may be closed)
 auto Widget::getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime> {
     auto hwndOrder = winActiveOrder.value(exePath);
     if (hwndOrder.isEmpty()) return {nullptr, QDateTime()};
@@ -264,14 +265,36 @@ auto Widget::getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDa
     return {iter.key(), iter.value()};
 }
 
+/// return null if no window recorded in group
+auto Widget::getLastValidActiveGroupWindow(const WindowGroup& group) -> QPair<HWND, QDateTime> {
+    auto hwndOrder = winActiveOrder.value(group.exePath);
+    if (hwndOrder.isEmpty()) return {nullptr, QDateTime()};
+
+    QList<HWND> windows;
+    for (auto& info: group.windows)
+        windows << info.hwnd;
+    sortGroupWindows(windows, group.exePath);
+
+    if (auto time = hwndOrder.value(windows.first()); !time.isNull())
+        return {windows.first(), time};
+    else // check if the first HWND is recorded
+        return {nullptr, QDateTime()};
+}
+
+/// sort Windows of [Group specified by exePath], by active order (latest first)
+void Widget::sortGroupWindows(QList<HWND>& windows, const QString& exePath) {
+    auto activeOrdMap = winActiveOrder.value(exePath);
+    if (activeOrdMap.isEmpty()) return;
+    // sort by active order
+    std::sort(windows.begin(), windows.end(), [&activeOrdMap](HWND a, HWND b) {
+        return activeOrdMap.value(a) > activeOrdMap.value(b); // default value if not found
+    }); // TODO update winActiveOrder! (remove invalid HWND)
+}
+
 /// group by exePath, sort by active order (last active first)
 QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
     auto windows = Util::listValidWindows(exePath); // filter by path
-    QHash<HWND, QDateTime> activeOrdMap = winActiveOrder.value(exePath);
-    // sort by active order
-    std::sort(windows.begin(), windows.end(), [&activeOrdMap](HWND a, HWND b) {
-        return activeOrdMap.value(a) > activeOrdMap.value(b);
-    }); // TODO update winActiveOrder!
+    sortGroupWindows(windows, exePath);
     return windows;
 }
 

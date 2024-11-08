@@ -63,6 +63,8 @@ private:
     bool forceShow();
     void showLabelForItem(QListWidgetItem* item, QString text = QString());
     auto getLastActiveGroupWindow(const QString& exePath) -> QPair<HWND, QDateTime>;
+    auto getLastValidActiveGroupWindow(const WindowGroup& group) -> QPair<HWND, QDateTime>;
+    void sortGroupWindows(QList<HWND>& windows, const QString& exePath);
     QList<HWND> buildGroupWindowOrder(const QString& exePath);
     static HWND rotateWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
     static HWND rotateNormalWindowInGroup(const QList<HWND>& windows, HWND current, bool forward = true);
