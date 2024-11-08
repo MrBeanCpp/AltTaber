@@ -166,6 +166,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown�
     winActiveOrder[path].insert(hwnd, QDateTime::currentDateTime());
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
+// FIXME BUG: QQFollower & Follower & 通过其打开的cmd 不会触发前台变化通知！ 但是用Win键打开的可以
 
 /// collect, filter, sort Windows for presentation
 QList<WindowGroup> Widget::prepareWindowGroupList() {
@@ -295,11 +296,10 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
             static bool isLastRollUp = true;
             bool isRollUp = wheelEvent->angleDelta().x() > 0; // ListWidget的方向改成了从左到右，所以滚轮方向从y()变成x()了
             if (groupWindowOrder.isEmpty())
-                groupWindowOrder = buildGroupWindowOrder(targetExe);
+                groupWindowOrder = buildGroupWindowOrder(targetExe); // TODO 其实这里不需要build 直接用lw里的就行...
 
             if (!hwnd) { // first time
-                if (!(hwnd = getLastActiveGroupWindow(targetExe).first))
-                    hwnd = groupWindowOrder.first(); // 没有lastActive记录，就随便选一个
+                hwnd = groupWindowOrder.first(); // 选择最后活跃的窗口
             } else { // select next window
                 if (isLastRollUp == isRollUp) // 滚轮方向切换时，不轮换窗口
                     hwnd = rotateWindowInGroup(groupWindowOrder, hwnd, isRollUp);
