@@ -35,6 +35,11 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
+    winSwitcher = new Widget;
+    winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
+
+    AppUtil::getExePathFromAppId(); // cache
+    // 依赖事件循环
     HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
     if (h_mouse == nullptr)
         qDebug() << "Failed to install h_mouse";
@@ -44,9 +49,6 @@ int main(int argc, char* argv[]) {
         qDebug() << "Hook uninstalled";
         UIAutomation::cleanup();
     });
-
-    winSwitcher = new Widget;
-    winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
 
     KeyboardHooker kbHooker(winSwitcher);
 

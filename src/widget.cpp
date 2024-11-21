@@ -322,7 +322,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
                 groupWindowOrder = buildGroupWindowOrder(targetExe); // TODO 其实这里不需要build 直接用lw里的就行...
 
             if (!hwnd) { // first time
-                hwnd = groupWindowOrder.first(); // 选择最后活跃的窗口
+                hwnd = groupWindowOrder.first(); // 选择最后活跃的窗口 TODO 考虑当前窗口就是First的情况，需要跳过，类似WinGroup
             } else { // select next window
                 if (isLastRollUp == isRollUp) // 滚轮方向切换时，不轮换窗口
                     hwnd = rotateWindowInGroup(groupWindowOrder, hwnd, isRollUp);

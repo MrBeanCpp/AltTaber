@@ -327,6 +327,8 @@ namespace AppUtil {
 
     /// Warning: 对于没有加入StartMenu且不是UWP的应用，fail, like `Rizonesoft.Notepad3`
     QString getExePathFromAppId(const QString& appid) {
+        static auto map = buildAppId2ExePathMap(); // cache, 耗时
+
         if (appid.isEmpty()) return {};
         if (QFile::exists(appid)) // if appid is exe path
             return appid;
@@ -335,7 +337,6 @@ namespace AppUtil {
         static QStringList BlackList;
         if (BlackList.contains(appid)) return {};
 
-        static auto map = buildAppId2ExePathMap(); // cache
         if (auto exe = map.value(appid); !exe.isEmpty())
             return exe;
 
