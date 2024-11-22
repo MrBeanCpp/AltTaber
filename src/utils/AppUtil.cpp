@@ -314,20 +314,21 @@ namespace AppUtil {
         return appList;
     }
 
-    /// build from Start Apps
-    QHash<QString, QString> buildAppId2ExePathMap() {
-        QHash<QString, QString> map;
-        auto list = getStartAppList();
-        for (const auto& [name, appId, exePath]: list) {
-//            qDebug() << name << appId << exePath;
-            map.insert(appId, exePath);
-        }
-        return map;
-    }
-
-    /// Warning: 对于没有加入StartMenu且不是UWP的应用，fail, like `Rizonesoft.Notepad3`
-    QString getExePathFromAppId(const QString& appid) {
-        static auto map = buildAppId2ExePathMap(); // cache, 耗时
+    /// Warning: 对于没有加入StartMenu且不是UWP的应用，fail, like `Rizonesoft.Notepad3`<br>
+    /// 还有更奇怪的，Clash for Windows, 在getStartAppList()中的AppID是绝对路径，但是AutoAnimation获取的是"com.lbyczf.clashwin"对不上<br>
+    /// So: 如果AppID无匹配，则转向Name匹配
+    QString getExePathFromAppIdOrName(const QString& appid, const QString& appName) {
+        static QHash<QString, QString> appid2Path;
+        static QHash<QString, QString> name2Path;
+        static auto buildStartAppMaps = []() { // cache, 耗时
+            auto list = getStartAppList(); // build from Start Apps
+            for (const auto& [name, appId, exePath]: list) {
+                appid2Path.insert(appId, exePath);
+                name2Path.insert(name, exePath);
+            }
+        };
+        if (appid2Path.isEmpty()) // init & cache
+            buildStartAppMaps();
 
         if (appid.isEmpty()) return {};
         if (QFile::exists(appid)) // if appid is exe path
@@ -337,17 +338,22 @@ namespace AppUtil {
         static QStringList BlackList;
         if (BlackList.contains(appid)) return {};
 
-        if (auto exe = map.value(appid); !exe.isEmpty())
+        if (auto exe = appid2Path.value(appid); !exe.isEmpty())
+            return exe;
+        if (auto exe = name2Path.value(appName); !exe.isEmpty())
             return exe;
 
-        map = buildAppId2ExePathMap(); // rebuild
+        buildStartAppMaps(); // rebuild
         qDebug() << "Not Found. Rebuild AppId2ExePathMap";
-        if (auto exe = map.value(appid); !exe.isEmpty())
+
+        if (auto exe = appid2Path.value(appid); !exe.isEmpty())
             return exe;
-        else { // add to blacklist, if also failed after rebuild
-            qWarning() << "Failed to find exe path for appid:" << appid;
-            BlackList.append(appid);
-            return {};
-        }
+        if (auto exe = name2Path.value(appName); !exe.isEmpty())
+            return exe;
+
+        // add to blacklist, if also failed after rebuild
+        qWarning() << "Failed to find exe path for appid:" << appid;
+        BlackList.append(appid);
+        return {};
     }
 }

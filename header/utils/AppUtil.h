@@ -10,7 +10,7 @@ namespace AppUtil {
     HWND getAppCoreWindow(HWND hwnd);
     bool isAppFrameWindow(HWND hwnd);
     QIcon getAppIcon(const QString& path);
-    QString getExePathFromAppId(const QString& appid = QString());
+    QString getExePathFromAppIdOrName(const QString& appid = QString(), const QString& appName = QString());
 
     inline const QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
     inline const QString AppFrameWindowClass = "ApplicationFrameWindow";

@@ -17,12 +17,19 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
         HWND topLevelHwnd = GetAncestor(hwnd, GA_ROOT);
         if (Util::getClassName(topLevelHwnd) == "Shell_TrayWnd") {
             auto delta = (short) HIWORD(data->mouseData);
-            qDebug() << delta << Util::getClassName(topLevelHwnd);
 
             auto el = UIAutomation::getElementUnderMouse();
             if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
                 auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
-                qDebug() << el.getName() << el.getClassName() << AppUtil::getExePathFromAppId(appid);
+                auto name = el.getName();
+                if (auto dash = name.lastIndexOf(" - "); dash != -1) // "Clash for Windows - 1 个运行窗口"
+                    name = name.left(dash);
+                auto exePath = AppUtil::getExePathFromAppIdOrName(appid, name);
+//                qDebug() << name << el.getClassName() << exePath << appid;
+                if (winSwitcher)
+                    QTimer::singleShot(0, winSwitcher, [=]() { // async
+                        winSwitcher->rotateWindowInGroup(exePath, delta > 0);
+                    });
             }
 
 //        QPoint pos(data->pt.x, data->pt.y);
@@ -38,7 +45,7 @@ int main(int argc, char* argv[]) {
     winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
 
-    AppUtil::getExePathFromAppId(); // cache
+    AppUtil::getExePathFromAppIdOrName(); // cache
     // 依赖事件循环
     HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
     if (h_mouse == nullptr)

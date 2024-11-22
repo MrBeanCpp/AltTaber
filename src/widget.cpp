@@ -84,7 +84,7 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         // weird formula, but works (hhh)
         auto index = (i - (2 * isShiftPressed - 1) + lw->count()) % lw->count();
         lw->setCurrentRow(index);
-    } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) {
+    } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) { // Alt + `, 在前台窗口同组窗口内切换
         if (this->isForeground()) return;
         auto foreWin = GetForegroundWindow();
         if (groupWindowOrder.isEmpty()) {
@@ -325,7 +325,7 @@ QList<HWND> Widget::buildGroupWindowOrder(const QString& exePath) {
 }
 
 bool Widget::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == lw && event->type() == QEvent::Wheel) { // TODO 适配全键盘操作 J K
+    if (watched == lw && event->type() == QEvent::Wheel) {
         auto* wheelEvent = static_cast<QWheelEvent*>(event);
         auto cursorPos = wheelEvent->position().toPoint();
         if (auto item = lw->itemAt(cursorPos)) {
@@ -375,6 +375,10 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
         }
     }
     return false;
+}
+
+void Widget::rotateWindowInGroup(const QString& exePath, bool forward) {
+    qDebug() << exePath << forward;
 }
 
 /// select next(forward)(older) or prev window in group<br>

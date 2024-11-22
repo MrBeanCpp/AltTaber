@@ -58,6 +58,7 @@ public:
 
     ~Widget() override;
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void rotateWindowInGroup(const QString& exePath, bool forward = true);
 
 private:
     bool forceShow();
