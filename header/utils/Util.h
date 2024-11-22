@@ -26,6 +26,8 @@ namespace Util {
     bool setWindowRoundCorner(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE pvAttribute = DWMWCP_ROUND);
     bool isKeyPressed(int vkey);
     QIcon overlayIcon(const QPixmap& icon, const QPixmap& overlay, const QRect& overlayRect);
+    HWND topWindowFromPoint(const POINT& pos);
+    HWND topWindowFromPoint(const QPoint& pos);
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

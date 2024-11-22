@@ -403,3 +403,7 @@ HWND Widget::rotateNormalWindowInGroup(const QList<HWND>& windows, HWND current,
         current = rotateWindowInGroup(windows, current, forward);
     return IsIconic(current) ? nullptr : current;
 }
+
+void Widget::clearGroupWindowOrder() {
+    groupWindowOrder.clear();
+}

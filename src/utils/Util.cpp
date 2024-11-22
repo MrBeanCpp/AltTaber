@@ -334,4 +334,13 @@ namespace Util {
         painter.end();
         return bg;
     }
+
+    HWND topWindowFromPoint(const POINT& pos) {
+        HWND hwnd = WindowFromPoint(pos);
+        return GetAncestor(hwnd, GA_ROOT);
+    }
+
+    HWND topWindowFromPoint(const QPoint& pos) {
+        return topWindowFromPoint(POINT{pos.x(), pos.y()});
+    }
 } // Util

@@ -4,62 +4,26 @@
 #include "../header/widget.h"
 #include "utils/winEventHook.h"
 #include "utils/Util.h"
-#include "utils/uiautomation.h"
-#include "utils/AppUtil.h"
+#include "utils/TaskbarWheelHooker.h"
 #include "utils/KeyboardHooker.h"
-
-Widget* winSwitcher = nullptr;
-
-LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode == HC_ACTION && wParam == WM_MOUSEWHEEL) {
-        auto* data = (MSLLHOOKSTRUCT*) lParam;
-        HWND hwnd = WindowFromPoint(data->pt);
-        HWND topLevelHwnd = GetAncestor(hwnd, GA_ROOT);
-        if (Util::getClassName(topLevelHwnd) == "Shell_TrayWnd") {
-            auto delta = (short) HIWORD(data->mouseData);
-
-            auto el = UIAutomation::getElementUnderMouse();
-            if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
-                auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
-                auto name = el.getName();
-                if (auto dash = name.lastIndexOf(" - "); dash != -1) // "Clash for Windows - 1 个运行窗口"
-                    name = name.left(dash);
-                auto exePath = AppUtil::getExePathFromAppIdOrName(appid, name);
-//                qDebug() << name << el.getClassName() << exePath << appid;
-                if (winSwitcher)
-                    QTimer::singleShot(0, winSwitcher, [=]() { // async
-                        winSwitcher->rotateWindowInGroup(exePath, delta > 0);
-                    });
-            }
-
-//        QPoint pos(data->pt.x, data->pt.y);
-//        qApp->postEvent(receiver, new QWheelEvent(pos, delta, Qt::NoButton, Qt::NoModifier));
-        }
-    }
-    return CallNextHookEx(nullptr, nCode, wParam, lParam);
-}
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
 
-    winSwitcher = new Widget;
+    auto* winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
 
-    AppUtil::getExePathFromAppIdOrName(); // cache
-    // 依赖事件循环
-    HHOOK h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
-    if (h_mouse == nullptr)
-        qDebug() << "Failed to install h_mouse";
-    QObject::connect(&a, &QApplication::aboutToQuit, [h_mouse]() {
-        UnhookWindowsHookEx(h_mouse);
+    QObject::connect(&a, &QApplication::aboutToQuit, []() {
         unhookWinEvent();
-        qDebug() << "Hook uninstalled";
-        UIAutomation::cleanup();
     });
 
     KeyboardHooker kbHooker(winSwitcher);
+    TaskbarWheelHooker tbHooker;
+    QObject::connect(&tbHooker, &TaskbarWheelHooker::tabWheelEvent,
+                     winSwitcher, QOverload<const QString&, bool>::of(&Widget::rotateWindowInGroup));
+    QObject::connect(&tbHooker, &TaskbarWheelHooker::leaveTaskbar, winSwitcher, &Widget::clearGroupWindowOrder);
 
-    setWinEventHook([](DWORD event, HWND hwnd) {
+    setWinEventHook([winSwitcher](DWORD event, HWND hwnd) {
         // 某些情况下，Hook拦截不到Alt+Tab（如VMware获取焦点且虚拟机开启时，即便focus在标题栏上）
         // （GPT建议RegisterRawInputDevices，不知道有没有效果，感觉比较危险）
         // 此时需要通过监控前台窗口检测系统的任务切换窗口唤出，并弹出本程序
