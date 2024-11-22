@@ -11,6 +11,7 @@
 #include <QPen>
 #include <QDateTime>
 #include <QtWin>
+#include <QWheelEvent>
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -71,6 +72,12 @@ Widget::~Widget() {
 void Widget::keyPressEvent(QKeyEvent* event) {
     auto key = event->key();
     auto modifiers = event->modifiers();
+    static const QHash<int, int> VimArrows = {
+            {Qt::Key_K, Qt::Key_Up},    // ↑
+            {Qt::Key_J, Qt::Key_Down},  // ↓
+            {Qt::Key_H, Qt::Key_Left},  // ←
+            {Qt::Key_L, Qt::Key_Right}, // →
+    };
     if (key == Qt::Key_Tab) { // switch to next or prev
         auto i = lw->currentRow();
         bool isShiftPressed = (modifiers & Qt::ShiftModifier);
@@ -86,8 +93,26 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         }
         if (auto nextWin = rotateWindowInGroup(groupWindowOrder, foreWin, !(modifiers & Qt::ShiftModifier))) {
             Util::switchToWindow(nextWin, true);
-            qInfo() << "Switch to" << Util::getWindowTitle(nextWin) << Util::getClassName(nextWin);
+            qInfo() << "(Alt+`)Switch to" << Util::getWindowTitle(nextWin) << Util::getClassName(nextWin);
         }
+    } else if (key == Qt::Key_Up || key == Qt::Key_Down) {
+        if (auto item = lw->currentItem()) {
+            auto center = lw->visualItemRect(item).center();
+            // 转发映射到WheelEvent
+            auto wheelEvent = new QWheelEvent(center, lw->mapToGlobal(center), {},
+                                              {key == Qt::Key_Up ? 120 : -120, 0},
+                                              Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+            QApplication::postEvent(lw, wheelEvent);
+        }
+    } else if (key == Qt::Key_Left || key == Qt::Key_Right) { // 默认情况下 左右键可以切换item 只需要处理边界循环即可
+        const int N = lw->count();
+        const int i = lw->currentRow();
+        if (key == Qt::Key_Left && i == 0)
+            lw->setCurrentRow(N - 1);
+        else if (key == Qt::Key_Right && i == N - 1)
+            lw->setCurrentRow(0);
+    } else if (VimArrows.contains(key)) { // map [K J H L] to [↑ ↓ ← →]
+        QApplication::postEvent(lw, new QKeyEvent(QEvent::KeyPress, VimArrows.value(key), modifiers));
     }
     QWidget::keyPressEvent(event);
 }
@@ -167,6 +192,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown�
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 // FIXME BUG: QQFollower & Follower & 通过其打开的cmd 不会触发前台变化通知！ 但是用Win键打开的可以
+//  原因有2：hwnd != GetForgroundWindow(), !IsWindowVisible()（那瞬间），貌似只有Terminal比较特殊
 
 /// collect, filter, sort Windows for presentation
 QList<WindowGroup> Widget::prepareWindowGroupList() {

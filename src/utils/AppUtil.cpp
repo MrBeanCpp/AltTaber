@@ -319,7 +319,7 @@ namespace AppUtil {
         QHash<QString, QString> map;
         auto list = getStartAppList();
         for (const auto& [name, appId, exePath]: list) {
-            qDebug() << name << appId << exePath;
+//            qDebug() << name << appId << exePath;
             map.insert(appId, exePath);
         }
         return map;
