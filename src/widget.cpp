@@ -3,7 +3,7 @@
 #include "utils/Util.h"
 #include <QDebug>
 #include <QWindow>
-#include <QKeyEvent>
+#include <QTime>
 #include <QScreen>
 #include "utils/setWindowBlur.h"
 #include "utils/IconOnlyDelegate.h"
@@ -12,6 +12,7 @@
 #include <QDateTime>
 #include <QtWin>
 #include <QWheelEvent>
+#include <QTimer>
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -357,7 +358,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
 
             HWND nextFocus = hwnd; // this隐藏后的焦点备选窗口, for `swtichToWindow` after AltUp
             if (isRollUp) {
-                Util::bringWindowToTop(hwnd, this->hWnd()); // wihout activate
+                Util::bringWindowToTop(hwnd, this->hWnd()); // without activate
             } else {
                 if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
                     ShowWindow(normal, SW_SHOWMINNOACTIVE); // minimize
@@ -377,8 +378,94 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
     return false;
 }
 
-void Widget::rotateWindowInGroup(const QString& exePath, bool forward) {
-    qDebug() << exePath << forward;
+void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward) {
+    qDebug() << "(Taskbar)Wheel on:" << exePath << forward;
+    if (exePath.isEmpty()) return;
+
+    static QString lastPath;
+    static HWND lastHwnd = nullptr;
+    if (lastPath != exePath) {
+        lastPath = exePath;
+        lastHwnd = nullptr;
+        groupWindowOrder.clear();
+    }
+    if (groupWindowOrder.isEmpty())
+        groupWindowOrder = buildGroupWindowOrder(exePath);
+
+    if (groupWindowOrder.isEmpty()) { // TODO steam.exe
+        qCritical() << "No window in group!";
+        return;
+    }
+
+    static bool isLastForward = true;
+    HWND hwnd = nullptr;
+    if (!lastHwnd)
+        hwnd = groupWindowOrder.first();
+    else {
+        if (isLastForward == forward)
+            hwnd = rotateWindowInGroup(groupWindowOrder, lastHwnd, forward);
+        else
+            hwnd = lastHwnd;
+    }
+    isLastForward = forward;
+
+    if (forward) {
+        static auto mouseEvent = [](DWORD flag) {
+            mouse_event(flag, 0, 0, 0, 0);
+        };
+        if (groupWindowOrder.size() == 1) {
+            // 单窗口情况下，模拟点击呼出，是最保险的
+            if ((hwnd != GetForegroundWindow() || IsIconic(hwnd))) { // 由于SW_SHOWMINNOACTIVE, 导致前台窗口不会变化，可能为刚刚最小化的窗口
+                mouseEvent(MOUSEEVENTF_LEFTDOWN);
+                mouseEvent(MOUSEEVENTF_LEFTUP);
+                qDebug() << "(Taskbar)Switch by click";
+            }
+        } else {
+            // 在TaskListThumbnailWnd显示的情况下restore window会导致预览实时刷新，导致卡顿和闪烁
+            // 隐藏TaskListThumbnailWnd也无效，会自动show
+            // DwmSetWindowAttribute[DWMWA_FORCE_ICONIC_REPRESENTATION, DWMWA_DISALLOW_PEEK], 效果都不好，还是会刷新闪烁
+
+            // 只能采用偷鸡hack，按住左键的情况下，预览窗口会消失
+            if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
+                mouseEvent(MOUSEEVENTF_LEFTDOWN);
+                QTimer::singleShot(20, this, [hwnd]() { // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
+                    Util::switchToWindow(hwnd, true);
+                });
+            } else
+                Util::switchToWindow(hwnd, true);
+
+            static QTimer* timer = [this]() {
+                auto* timer = new QTimer;
+                timer->setSingleShot(true);
+                timer->setInterval(200);
+                timer->callOnTimeout(this, [this]() { // TODO cursor移动后立即释放 防止拖拽
+                    mouseEvent(MOUSEEVENTF_LEFTUP);
+                    qDebug() << "(Taskbar)#Release LButton";
+
+                    // 鼠标点击thumbnail之后，其获取焦点，此时若焦点在其窗口组成员中，thumbnail就不会隐藏，这是Windows机制
+                    // 只能通过将焦点转移到Taskbar使其隐藏
+                    // 直接 HIDE thumbnail 不太行，会导致之后restore窗口时 thumbnail刷新 + 窗口闪烁，闪瞎了
+                    QTimer::singleShot(100, this, []() { // 50ms 等待thumbnail显示
+                        if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
+                            if (HWND taskbar = FindWindow(L"Shell_TrayWnd", nullptr))
+                                Util::switchToWindow(taskbar, true);
+                        }
+                    });
+                });
+                return timer;
+            }();
+            timer->stop();
+            timer->start();
+        }
+        qDebug() << "(Taskbar)Switch to" << hwnd << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
+    } else {
+        if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
+            ShowWindow(normal, SW_SHOWMINNOACTIVE); // NOACTIVE 防止焦点自动回落到 CEF-OSC-WIDGET，离谱
+            qDebug() << "(Taskbar)Minimize" << hwnd << Util::getWindowTitle(normal) << Util::getClassName(normal);
+        }
+    }
+
+    lastHwnd = hwnd;
 }
 
 /// select next(forward)(older) or prev window in group<br>

@@ -20,8 +20,8 @@ int main(int argc, char* argv[]) {
     KeyboardHooker kbHooker(winSwitcher);
     TaskbarWheelHooker tbHooker;
     QObject::connect(&tbHooker, &TaskbarWheelHooker::tabWheelEvent,
-                     winSwitcher, QOverload<const QString&, bool>::of(&Widget::rotateWindowInGroup));
-    QObject::connect(&tbHooker, &TaskbarWheelHooker::leaveTaskbar, winSwitcher, &Widget::clearGroupWindowOrder);
+                     winSwitcher, &Widget::rotateTaskbarWindowInGroup, Qt::QueuedConnection);
+    QObject::connect(&tbHooker, &TaskbarWheelHooker::leaveTaskbar, winSwitcher, &Widget::clearGroupWindowOrder, Qt::QueuedConnection);
 
     setWinEventHook([winSwitcher](DWORD event, HWND hwnd) {
         // 某些情况下，Hook拦截不到Alt+Tab（如VMware获取焦点且虚拟机开启时，即便focus在标题栏上）

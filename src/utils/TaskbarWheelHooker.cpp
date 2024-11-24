@@ -40,7 +40,7 @@ TaskbarWheelHooker::TaskbarWheelHooker() {
     timer->callOnTimeout(this, [this]() {
         static bool isLastTaskbar = false;
         HWND topLevelHwnd = Util::topWindowFromPoint(QCursor::pos());
-        bool isTaskbar = (Util::getClassName(topLevelHwnd) == QStringLiteral("Shell_TrayWnd"));
+        bool isTaskbar = (Util::getClassName(topLevelHwnd) == QStringLiteral("Shell_TrayWnd")); // TODO 副屏是 Shell_SecondaryTrayWnd
         if (isLastTaskbar != isTaskbar) {
             isLastTaskbar = isTaskbar;
             if (isTaskbar) {
