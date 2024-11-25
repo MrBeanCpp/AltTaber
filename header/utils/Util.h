@@ -10,7 +10,7 @@
 namespace Util {
     QString getWindowTitle(HWND hwnd);
     QString getClassName(HWND hwnd);
-    QString getProcessExePath(HWND hwnd);
+    QString getWindowProcessPath(HWND hwnd);
     QString getFileDescription(const QString& path);
     bool isTopMost(HWND hwnd);
     void switchToWindow(HWND hwnd, bool force = false);

@@ -89,7 +89,7 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         if (this->isForeground()) return;
         auto foreWin = GetForegroundWindow();
         if (groupWindowOrder.isEmpty()) {
-            auto targetExe = Util::getProcessExePath(foreWin);
+            auto targetExe = Util::getWindowProcessPath(foreWin);
             groupWindowOrder = buildGroupWindowOrder(targetExe);
         }
         if (auto nextWin = rotateWindowInGroup(groupWindowOrder, foreWin, !(modifiers & Qt::ShiftModifier))) {
@@ -187,7 +187,7 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown时，关闭前台更新通知
     if (hwnd == this->hWnd()) return;
     if (!Util::isWindowAcceptable(hwnd)) return;
-    auto path = Util::getProcessExePath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
+    auto path = Util::getWindowProcessPath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path].insert(hwnd, QDateTime::currentDateTime());
     qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
@@ -201,7 +201,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
     auto list = Util::listValidWindows();
     for (auto hwnd: list) {
         if (hwnd == this->hWnd()) continue; // skip self
-        auto path = Util::getProcessExePath(hwnd);
+        auto path = Util::getWindowProcessPath(hwnd);
         if (path.isEmpty()) continue; // TODO 可能需要管理员权限
         auto& winGroup = winGroupMap[path];
         if (winGroup.exePath.isEmpty()) { // QIcon::isNull 判断可能不太准（例如空图标）
@@ -429,7 +429,7 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward) {
             if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
                 QTimer::singleShot(20, this, [hwnd]() { // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
-                    Util::switchToWindow(hwnd, true);
+                    Util::switchToWindow(hwnd, true); // TODO thumbnail隐藏之前 不要switch，并且block滚轮 防止闪烁卡顿
                 });
             } else
                 Util::switchToWindow(hwnd, true);

@@ -51,5 +51,6 @@ int main(int argc, char* argv[]) {
         }
     });
 
+    qInfo() << "@WinSwitcher started!";
     return QApplication::exec();
 }

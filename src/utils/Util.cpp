@@ -39,27 +39,28 @@ namespace Util {
     }
 
     // slow
-    QString getProcessExePath(HWND hwnd) {
+    QString getProcessPath(DWORD pid) {
+        QString path;
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+        if (hProcess) {
+            TCHAR processName[MAX_PATH];
+            // https://www.cnblogs.com/mooooonlight/p/14491399.html
+            if (GetModuleFileNameEx(hProcess, nullptr, processName, MAX_PATH))
+                path = QString::fromWCharArray(processName);
+            CloseHandle(hProcess);
+        }
+        return path;
+    }
+
+    // slow
+    QString getWindowProcessPath(HWND hwnd) {
         if (AppUtil::isAppFrameWindow(hwnd)) // AppFrame 用于焦点和窗口操作
             hwnd = AppUtil::getAppCoreWindow(hwnd); // AppCore 用于获取exe路径
 
-        DWORD processId = 0;
-        GetWindowThreadProcessId(hwnd, &processId);
-        if (processId == 0)
-            return {};
-
-        HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processId);
-        if (hProcess == nullptr)
-            return {};
-
-        TCHAR processName[MAX_PATH] = TEXT("<unknown>");
-        // https://www.cnblogs.com/mooooonlight/p/14491399.html
-        if (GetModuleFileNameEx(hProcess, nullptr, processName, MAX_PATH)) {
-            CloseHandle(hProcess);
-            return QString::fromWCharArray(processName);
-        }
-
-        CloseHandle(hProcess);
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hwnd, &pid);
+        if (pid)
+            return getProcessPath(pid);
         return {};
     }
 
@@ -161,7 +162,7 @@ namespace Util {
             && GetWindowTextLength(hwnd) > 0
             && !BlackList_ClassName.contains(getClassName(hwnd))
                 ) {
-            auto path = getProcessExePath(hwnd); // 耗时操作，减少次数
+            auto path = getWindowProcessPath(hwnd); // 耗时操作，减少次数
             if (!BlackList_ExePath.contains(path) && !BlackList_FileName.contains(QFileInfo(path).fileName()))
                 return true;
         }
@@ -237,7 +238,7 @@ namespace Util {
         QList<HWND> windows;
         auto winList = listValidWindows();
         for (auto hwnd: winList) {
-            if (getProcessExePath(hwnd) == exePath)
+            if (getWindowProcessPath(hwnd) == exePath)
                 windows << hwnd;
         }
         return windows;
