@@ -13,6 +13,7 @@
 #include <propkey.h>
 #include <atlbase.h>
 #include <tlhelp32.h>
+#include <QFileIconProvider>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -338,6 +339,23 @@ namespace Util {
         return icon;
     }
 
+    bool isBottomRightTransparent(const QIcon& icon, int extent = 32) {
+        // 8 16 32 64貌似时间都差不多 怪
+        QImage image = icon.pixmap(extent).toImage().convertToFormat(QImage::Format_ARGB32); // 强制转换为支持透明的格式
+
+        int width = image.width();
+        int height = image.height();
+
+        // 遍历右下角 1/4 区域
+        for (int y = height / 2; y < height; ++y) {
+            for (int x = width / 2; x < width; ++x) {
+                if (qAlpha(image.pixel(x, y)) != 0) // 检查 Alpha 通道是否为 0
+                    return false;
+            }
+        }
+        return true;
+    }
+
     /// Cached Icon, including UWP
     QIcon getCachedIcon(const QString& path) {
         static QHash<QString, QIcon> IconCache;
@@ -353,8 +371,15 @@ namespace Util {
             qDebug() << "Detect AppxManifest.xml, maybe UWP" << path;
             icon = AppUtil::getAppIcon(path);
         }
-        if (icon.isNull()) // 兜底
+        if (icon.isNull()) { // 兜底
             icon = getJumboIcon(path);
+            if (isBottomRightTransparent(icon)) {
+                // 对于不包含大图标的exe，例如[Follower]获取64x64的图标，但只有左上角有8x8图标，其余透明）
+                // 通过检测右下角1/4区域来判定这种小图标情况，改为获取小号size图标，则会正常（如48x48）（也许需要向下遍历，但是一般情况下够用了）
+                qDebug() << "-- BottomRight is transparent, fallback to 48x48" << path;
+                icon = QFileIconProvider().icon(QFileInfo(path)).pixmap(48);
+            }
+        }
         IconCache.insert(path, icon);
         qDebug() << "Icon not found in cache, loaded in" << t.elapsed() << "ms" << path;
         return icon;
