@@ -17,11 +17,16 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
             if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
                 auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
                 auto name = el.getName();
-                if (auto dash = name.lastIndexOf(" - "); dash != -1) // "Clash for Windows - 1 个运行窗口"
-                    name = name.left(dash);
+                int windows = 0;
+                const auto Dash = QStringLiteral(" - ");
+                if (auto dashIdx = name.lastIndexOf(Dash); dashIdx != -1) { // "Clash for Windows - 1 个运行窗口"
+                    std::stringstream ss(name.mid(dashIdx + Dash.size()).toStdString());
+                    ss >> windows; // 从标题手动解析真实窗口数量，程序内部由于过滤逻辑的存在，可能不准确
+                    name = name.left(dashIdx);
+                }
                 auto exePath = AppUtil::getExePathFromAppIdOrName(appid, name);
-//                qDebug() << name << el.getClassName() << exePath << appid;
-                emit TaskbarWheelHooker::instance->tabWheelEvent(exePath, delta > 0);
+//                qDebug() << name << windows << appid;
+                emit TaskbarWheelHooker::instance->tabWheelEvent(exePath, delta > 0, windows);
             }
         }
     }

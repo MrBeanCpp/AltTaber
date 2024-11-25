@@ -58,7 +58,7 @@ public:
 
     ~Widget() override;
     bool eventFilter(QObject* watched, QEvent* event) override;
-    void rotateTaskbarWindowInGroup(const QString& exePath, bool forward = true);
+    void rotateTaskbarWindowInGroup(const QString& exePath, bool forward, int windows);
     void clearGroupWindowOrder();
 
 private:

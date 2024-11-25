@@ -378,8 +378,8 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
     return false;
 }
 
-void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward) {
-    qDebug() << "(Taskbar)Wheel on:" << exePath << forward;
+void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, int windows) {
+    qDebug() << "(Taskbar)Wheel on:" << exePath << forward << windows;
     if (exePath.isEmpty()) return;
 
     static QString lastPath;
@@ -441,7 +441,7 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward) {
         static auto mouseEvent = [](DWORD flag) {
             mouse_event(flag, 0, 0, 0, 0);
         };
-        if (groupWindowOrder.size() == 1) {
+        if (windows == 1) { // 由于过滤的存在，groupWindowOrder.size() 不一定等于 windows(真实窗口数量)
             // 单窗口情况下，模拟点击呼出，是最保险的
             if ((hwnd != GetForegroundWindow() || IsIconic(hwnd))) { // 由于SW_SHOWMINNOACTIVE, 导致前台窗口不会变化，可能为刚刚最小化的窗口
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
