@@ -11,6 +11,7 @@ namespace Util {
     QString getWindowTitle(HWND hwnd);
     QString getClassName(HWND hwnd);
     QString getWindowProcessPath(HWND hwnd);
+    QList<QString> getChildProcessPaths(const QString& exePath);
     QString getFileDescription(const QString& path);
     bool isTopMost(HWND hwnd);
     void switchToWindow(HWND hwnd, bool force = false);

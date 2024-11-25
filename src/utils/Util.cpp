@@ -12,6 +12,7 @@
 #include <QPainter>
 #include <propkey.h>
 #include <atlbase.h>
+#include <tlhelp32.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -61,6 +62,63 @@ namespace Util {
         GetWindowThreadProcessId(hwnd, &pid);
         if (pid)
             return getProcessPath(pid);
+        return {};
+    }
+
+    /// 根据可执行文件路径查找进程 PID
+    DWORD findProcessByPath(const QString& exePath) {
+        DWORD targetPID = 0;
+        // Warning: snapshot是消耗品，不能重复使用
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) {
+            return 0;
+        }
+
+        PROCESSENTRY32 entry = {sizeof(PROCESSENTRY32)};
+        if (Process32First(snapshot, &entry)) {
+            do {
+                QString processPath = getProcessPath(entry.th32ProcessID);
+                if (QString::compare(processPath, exePath, Qt::CaseInsensitive) == 0) {
+                    targetPID = entry.th32ProcessID;
+                    break;
+                }
+            } while (Process32Next(snapshot, &entry));
+        }
+
+        CloseHandle(snapshot);
+        return targetPID;
+    }
+
+    /// 获取所有子进程的路径
+    QList<QString> getChildProcessPaths(DWORD parentPID) {
+        QList<QString> childPaths;
+
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) {
+            return childPaths;
+        }
+
+        PROCESSENTRY32 entry = {sizeof(PROCESSENTRY32)};
+        if (Process32First(snapshot, &entry)) {
+            do {
+                if (entry.th32ParentProcessID == parentPID) {
+                    QString processPath = getProcessPath(entry.th32ProcessID);
+                    if (!processPath.isEmpty()) {
+                        childPaths.append(processPath);
+                    }
+                }
+            } while (Process32Next(snapshot, &entry));
+        }
+
+        CloseHandle(snapshot);
+        return childPaths;
+    }
+
+    /// 根据exe路径查找所有子进程的路径
+    QList<QString> getChildProcessPaths(const QString& exePath) {
+        if (auto pid = findProcessByPath(exePath)) {
+            return getChildProcessPaths(pid);
+        }
         return {};
     }
 
@@ -198,6 +256,7 @@ namespace Util {
 
     // about 2ms
     QList<HWND> listValidWindows() {
+        qDebug() << "#List Valid Windows";
         using namespace AppUtil;
         QList<HWND> list;
         auto winList = Util::enumWindows();

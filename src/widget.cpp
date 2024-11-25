@@ -392,9 +392,37 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward) {
     if (groupWindowOrder.isEmpty())
         groupWindowOrder = buildGroupWindowOrder(exePath);
 
-    if (groupWindowOrder.isEmpty()) { // TODO steam.exe
-        qCritical() << "No window in group!";
-        return;
+    if (groupWindowOrder.isEmpty()) {
+        qCritical() << "No window in group!" << exePath;
+        // 有些软件的窗口是由子进程创建的，如 steam.exe -> steamwebhelper.exe (持有窗口)
+        // 但是在任务栏只能获取到父进程steam.exe
+        // 这种情况下，需要查找其子进程的路径
+        auto childPaths = Util::getChildProcessPaths(exePath);
+        if (childPaths.isEmpty()) return;
+        if (childPaths.size() == 1) {
+            qDebug() << "Try to switch to child process:" << childPaths.first();
+            groupWindowOrder = buildGroupWindowOrder(childPaths.first());
+        } else {
+            // 如果有多个子进程路径，就根据validWindows过滤
+            qWarning() << "!Multiple child processes:" << childPaths;
+            QSet<QString> validPaths;
+            // If range-initializer returns a temporary, its lifetime is extended until the end of the loop
+            for (auto hwnd: Util::listValidWindows()) {
+                if (auto path = Util::getWindowProcessPath(hwnd); !path.isEmpty())
+                    validPaths.insert(path);
+            }
+            for (auto& path: childPaths) {
+                if (validPaths.contains(path)) {
+                    qDebug() << "Try to switch to valid child process:" << path;
+                    groupWindowOrder = buildGroupWindowOrder(path);
+                    break;
+                }
+            }
+        }
+        if (groupWindowOrder.isEmpty()) { // 无力回天
+            qCritical() << "もうおしまいだ！";
+            return;
+        }
     }
 
     static bool isLastForward = true;
