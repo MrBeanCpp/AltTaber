@@ -419,6 +419,9 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
                 }
             }
         }
+        // TODO 有可能a进程开启b进程之后，a就关闭了，他俩也没有真的父子关系
+        //  例如：ksolaunch.exe -> wps.exe
+        //  此时只能通过File Description来匹配，均为“WPS Office”
         if (groupWindowOrder.isEmpty()) { // 无力回天
             qCritical() << "もうおしまいだ！";
             return;
@@ -443,9 +446,10 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
         };
         if (windows == 1) { // 由于过滤的存在，groupWindowOrder.size() 不一定等于 windows(真实窗口数量)
             // 单窗口情况下，模拟点击呼出，是最保险的
-            if ((hwnd != GetForegroundWindow() || IsIconic(hwnd))) { // 由于SW_SHOWMINNOACTIVE, 导致前台窗口不会变化，可能为刚刚最小化的窗口
+            if ((hwnd != GetForegroundWindow() || IsIconic(hwnd))) { // 若采用SW_SHOWMINNOACTIVE, 则前台窗口不会变化，可能为刚刚最小化的窗口
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
                 mouseEvent(MOUSEEVENTF_LEFTUP);
+                qApp->processEvents();
                 qDebug() << "(Taskbar)Switch by click";
             }
         } else {
@@ -488,7 +492,10 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
         qDebug() << "(Taskbar)Switch to" << hwnd << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
     } else {
         if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
-            ShowWindow(normal, SW_SHOWMINNOACTIVE); // NOACTIVE 防止焦点自动回落到 CEF-OSC-WIDGET，离谱
+            ShowWindow(normal, SW_MINIMIZE); // SW_MINIMIZE 会让焦点自动回落到下一个窗口
+            // 当所有窗口隐藏后，getElementUnderMouse() 会变成"CEF-OSC-WIDGET"，但是焦点和前台窗口并不是他，离谱
+            // 此时Automation对鼠标下任务栏Element的判定会出错，solution为手动变焦到任务栏（见TaskbarWheelHooker.cpp）
+            // SW_SHOWMINNOACTIVE不会切换焦点，即便本窗口已经最小化，但仍然持有焦点；但这不是合理的行为，同时会让QQ Follower反复弹出
             qDebug() << "(Taskbar)Minimize" << hwnd << Util::getWindowTitle(normal) << Util::getClassName(normal);
         }
     }

@@ -1,10 +1,10 @@
 ﻿#include "utils/TaskbarWheelHooker.h"
 #include <QTimer>
-#include <QDebug>
 #include "utils/uiautomation.h"
 #include "utils/AppUtil.h"
 #include "utils/Util.h"
 #include <QCursor>
+#include <QTime>
 
 LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION && wParam == WM_MOUSEWHEEL) {
@@ -14,6 +14,14 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
             auto delta = (short) HIWORD(data->mouseData);
 
             auto el = UIAutomation::getElementUnderMouse();
+            qDebug() << delta << el.getClassName() << el.getAutomationId() << el.getName();
+            if (el.getClassName() == "CEF-OSC-WIDGET") { // Nvidia Overlay
+                // 当所有窗口最小化后，会出现这种情况，但是焦点和前台都不是他，离谱
+                qDebug() << "detect CEF, try active taskbar";
+                Util::switchToWindow(topLevelHwnd, true); // 只能通过变焦到Taskbar使Element正常检测
+                el = std::move(UIAutomation::getElementUnderMouse());
+                qDebug() << (el.getClassName() != "CEF-OSC-WIDGET" ? "successful!" : "failed");
+            }
             if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
                 auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
                 auto name = el.getName();
@@ -53,11 +61,11 @@ TaskbarWheelHooker::TaskbarWheelHooker() {
                 h_mouse = SetWindowsHookEx(WH_MOUSE_LL, (HOOKPROC) mouseProc, GetModuleHandle(nullptr), 0);
                 if (h_mouse == nullptr)
                     qCritical() << "Failed to install h_mouse";
-                qDebug() << "#Enter Taskbar";
+                qDebug() << "#Enter Taskbar" << QTime::currentTime();
             } else {
                 UnhookWindowsHookEx(h_mouse);
                 h_mouse = nullptr;
-                qDebug() << "#Leave Taskbar";
+                qDebug() << "#Leave Taskbar" << QTime::currentTime();
                 emit leaveTaskbar();
             }
         }
