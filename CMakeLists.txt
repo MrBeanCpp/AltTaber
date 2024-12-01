@@ -5,10 +5,30 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-
 set(CMAKE_PREFIX_PATH "D:/Qt/5.15.2/msvc2019_64")
-include_directories(header)
 list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS ui) # 如果.ui文件不在.cpp同一目录下，需要添加搜索路径
+
+# 设置版本信息变量
+set(VERSION_MAJOR 0)
+set(VERSION_MINOR 1)
+set(VERSION_PATCH 0)
+
+set(COMPANY_NAME "MrBeanCpp")
+set(FILE_DESCRIPTION "AltTaber - Window Switcher")
+set(PRODUCT_NAME "AltTaber")
+# 设置图标的相对路径
+# 图标会被缓存，修改后不生效的话，需要删除AppData\Local\IconCache.db & 重启资源管理器
+set(ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/img/icon-w.ico")
+
+set(VERSIONINFO_RC "${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.rc")
+# 处理.in模板文件 生成版本信息文件
+configure_file(
+        VersionInfo.rc.in
+        ${VERSIONINFO_RC}
+        @ONLY # 只处理@var@格式的变量
+)
+
+include_directories(header)
 
 find_package(Qt5 COMPONENTS
         Core
@@ -19,6 +39,7 @@ find_package(Qt5 COMPONENTS
         REQUIRED)
 
 add_executable(Win_Switcher src/main.cpp
+        ${VERSIONINFO_RC}
         src/widget.cpp
         header/widget.h
         ui/widget.ui
@@ -50,6 +71,11 @@ target_link_libraries(${PROJECT_NAME}
         Dwmapi
         Comctl32
 )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "AltTaber") # 设置输出文件名
+if (CMAKE_BUILD_TYPE MATCHES "Release")
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE true) # 设置为窗口应用程序, 无控制台，同时会导致Clion无法捕获输出
+endif ()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         QT_DEPRECATED_WARNINGS

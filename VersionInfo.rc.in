@@ -1,0 +1,34 @@
+﻿#include <windows.h>
+
+IDI_ICON1	ICON    DISCARDABLE "@ICON_PATH@"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION @VERSION_MAJOR@,@VERSION_MINOR@,@VERSION_PATCH@,0
+    PRODUCTVERSION @VERSION_MAJOR@,@VERSION_MINOR@,@VERSION_PATCH@,0
+    FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+    FILEFLAGS VS_FF_DEBUG
+#else
+    FILEFLAGS 0x0L
+#endif
+    FILEOS VOS__WINDOWS32
+    FILETYPE VFT_APP
+    FILESUBTYPE VFT2_UNKNOWN
+    BEGIN
+        BLOCK "StringFileInfo"
+        BEGIN
+            BLOCK "040904b0" // US English (0x0409), Unicode (0x04B0) charset
+            BEGIN
+                VALUE "CompanyName", "@COMPANY_NAME@\0"
+                VALUE "FileDescription", "@FILE_DESCRIPTION@\0"
+                VALUE "FileVersion", "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@.0\0"
+                VALUE "ProductName", "@PRODUCT_NAME@\0"
+                VALUE "LegalCopyright", "\0"
+                VALUE "ProductVersion", "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@.0\0"
+            END
+        END
+        BLOCK "VarFileInfo"
+        BEGIN
+            VALUE "Translation", 0x0409, 1200 // US English (0x0409), Unicode (1200) charset
+        END
+    END
