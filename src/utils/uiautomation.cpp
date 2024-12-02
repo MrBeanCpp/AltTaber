@@ -27,6 +27,7 @@ bool UIAutomation::init() {
     return true;
 }
 
+/// based on physical cursor position
 UIElement UIAutomation::getElementUnderMouse() {
     if (!pAutomation) {
         if (!init())

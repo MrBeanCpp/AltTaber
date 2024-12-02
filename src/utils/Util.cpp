@@ -420,12 +420,16 @@ namespace Util {
         return bg;
     }
 
+    /// Input: 需要物理坐标，不要用`QCursor::pos`（逻辑坐标），特别是开启了DPI缩放的情况下
     HWND topWindowFromPoint(const POINT& pos) {
         HWND hwnd = WindowFromPoint(pos);
         return GetAncestor(hwnd, GA_ROOT);
     }
 
-    HWND topWindowFromPoint(const QPoint& pos) {
-        return topWindowFromPoint(POINT{pos.x(), pos.y()});
+    /// Get physical cursor position
+    POINT getCursorPos() {
+        POINT pos;
+        GetCursorPos(&pos);
+        return pos;
     }
 } // Util

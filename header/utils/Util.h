@@ -28,7 +28,7 @@ namespace Util {
     bool isKeyPressed(int vkey);
     QIcon overlayIcon(const QPixmap& icon, const QPixmap& overlay, const QRect& overlayRect);
     HWND topWindowFromPoint(const POINT& pos);
-    HWND topWindowFromPoint(const QPoint& pos);
+    POINT getCursorPos();
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

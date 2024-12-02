@@ -3,7 +3,6 @@
 #include "utils/uiautomation.h"
 #include "utils/AppUtil.h"
 #include "utils/Util.h"
-#include <QCursor>
 #include <QTime>
 
 LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
@@ -52,7 +51,7 @@ TaskbarWheelHooker::TaskbarWheelHooker() {
     auto* timer = new QTimer(this);
     timer->callOnTimeout(this, [this]() {
         static bool isLastTaskbar = false;
-        HWND topLevelHwnd = Util::topWindowFromPoint(QCursor::pos());
+        HWND topLevelHwnd = Util::topWindowFromPoint(Util::getCursorPos());
         bool isTaskbar = (Util::getClassName(topLevelHwnd) == QStringLiteral("Shell_TrayWnd")); // TODO 副屏是 Shell_SecondaryTrayWnd
         if (isLastTaskbar != isTaskbar) {
             isLastTaskbar = isTaskbar;
