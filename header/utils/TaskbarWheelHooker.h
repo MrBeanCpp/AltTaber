@@ -13,7 +13,7 @@ public:
 
 signals:
     void tabWheelEvent(const QString& exePath, bool isUp, int windows); // 参数为引用问题也不大，貌似会自动拷贝（Qt::QueuedConnection情况下）
-    void leaveTaskbar(void); // 鼠标离开taskbar
+    void leaveTaskbar(); // 鼠标离开taskbar
 
 private:
     HHOOK h_mouse = nullptr;

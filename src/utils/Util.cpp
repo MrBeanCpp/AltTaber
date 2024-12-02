@@ -260,7 +260,7 @@ namespace Util {
         qDebug() << "#List Valid Windows";
         using namespace AppUtil;
         QList<HWND> list;
-        auto winList = Util::enumWindows();
+        const auto winList = Util::enumWindows();
         for (auto hwnd: winList) {
             if (!hwnd) continue;
             auto className = Util::getClassName(hwnd);
@@ -298,7 +298,7 @@ namespace Util {
     /// list windows filtered by exePath
     QList<HWND> listValidWindows(const QString& exePath) {
         QList<HWND> windows;
-        auto winList = listValidWindows();
+        const auto winList = listValidWindows();
         for (auto hwnd: winList) {
             if (getWindowProcessPath(hwnd).compare(exePath, Qt::CaseInsensitive) == 0) // 用 == 就寄了，特别是taskbar
                 windows << hwnd;

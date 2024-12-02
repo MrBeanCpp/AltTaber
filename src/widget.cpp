@@ -3,7 +3,6 @@
 #include "utils/Util.h"
 #include <QDebug>
 #include <QWindow>
-#include <QTime>
 #include <QScreen>
 #include "utils/setWindowBlur.h"
 #include "utils/IconOnlyDelegate.h"
@@ -51,11 +50,11 @@ Widget::Widget(QWidget* parent) :
     lw->setItemDelegate(new IconOnlyDelegate(lw));
     lw->installEventFilter(this);
 
-    connect(lw, &QListWidget::currentItemChanged, [this](QListWidgetItem* cur, QListWidgetItem*) {
+    connect(lw, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* cur, QListWidgetItem*) {
         if (cur) showLabelForItem(cur);
     });
 
-    connect(qApp, &QApplication::focusWindowChanged, [this](QWindow* focusWindow) {
+    connect(qApp, &QApplication::focusWindowChanged, this, [this](QWindow* focusWindow) {
         if (focusWindow == nullptr) {
             if (!this->underMouse()) // hide when lost focus & mouse outside (means user choose to)
                 hide();
@@ -198,7 +197,7 @@ void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDownæ—
 /// collect, filter, sort Windows for presentation
 QList<WindowGroup> Widget::prepareWindowGroupList() {
     QMap<QString, WindowGroup> winGroupMap;
-    auto list = Util::listValidWindows();
+    const auto list = Util::listValidWindows();
     for (auto hwnd: list) {
         if (hwnd == this->hWnd()) continue; // skip self
         auto path = Util::getWindowProcessPath(hwnd);

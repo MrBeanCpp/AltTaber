@@ -321,7 +321,7 @@ namespace AppUtil {
         static QHash<QString, QString> appid2Path;
         static QHash<QString, QString> name2Path;
         static auto buildStartAppMaps = []() { // cache, 耗时
-            auto list = getStartAppList(); // build from Start Apps
+            const auto list = getStartAppList(); // build from Start Apps
             for (const auto& [name, appId, exePath]: list) {
                 appid2Path.insert(appId, exePath);
                 name2Path.insert(name, exePath);

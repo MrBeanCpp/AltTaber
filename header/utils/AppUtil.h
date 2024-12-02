@@ -15,7 +15,7 @@ namespace AppUtil {
     inline const QString AppCoreWindowClass = "Windows.UI.Core.CoreWindow";
     inline const QString AppFrameWindowClass = "ApplicationFrameWindow";
     inline const QString AppManifest = "AppxManifest.xml";
-};
+}
 
 
 #endif //WIN_SWITCHER_APPUTIL_H
