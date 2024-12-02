@@ -298,7 +298,7 @@ namespace Util {
         QList<HWND> windows;
         auto winList = listValidWindows();
         for (auto hwnd: winList) {
-            if (getWindowProcessPath(hwnd) == exePath)
+            if (getWindowProcessPath(hwnd).compare(exePath, Qt::CaseInsensitive) == 0) // 用 == 就寄了，特别是taskbar
                 windows << hwnd;
         }
         return windows;

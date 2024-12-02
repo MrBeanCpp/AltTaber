@@ -409,10 +409,10 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
             // If range-initializer returns a temporary, its lifetime is extended until the end of the loop
             for (auto hwnd: Util::listValidWindows()) {
                 if (auto path = Util::getWindowProcessPath(hwnd); !path.isEmpty())
-                    validPaths.insert(path);
+                    validPaths.insert(path.toLower());
             }
             for (auto& path: childPaths) {
-                if (validPaths.contains(path)) {
+                if (validPaths.contains(path.toLower())) {
                     qDebug() << "Try to switch to valid child process:" << path;
                     groupWindowOrder = buildGroupWindowOrder(path);
                     break;
