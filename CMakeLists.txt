@@ -17,7 +17,7 @@ set(COMPANY_NAME "MrBeanCpp")
 set(FILE_DESCRIPTION "AltTaber - Window Switcher")
 set(PRODUCT_NAME "AltTaber")
 # 设置图标的相对路径
-# 图标会被缓存，修改后不生效的话，需要删除AppData\Local\IconCache.db & 重启资源管理器
+# 图标会被缓存，修改后不生效的话，需要删除AppData\Local\IconCache.db & 重启资源管理器，该文件在PC重启后自动创建
 set(ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/img/icon.ico")
 
 set(VERSIONINFO_RC "${CMAKE_CURRENT_BINARY_DIR}/VersionInfo.rc")

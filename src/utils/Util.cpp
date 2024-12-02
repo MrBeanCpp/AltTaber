@@ -35,7 +35,7 @@ namespace Util {
 
     /// 判断窗口是否被隐藏，与IsWindowVisible不同，两者需要同时判断（疑惑）
     bool isWindowCloaked(HWND hwnd) {
-        bool isCloaked = false;
+        BOOL isCloaked = false; // ! bool 会造成参数错误，导致本函数恒定false; bool & BOOL字节数不同，调试模式下 LLDB一栏会报错！ 非调试看不出来
         auto rt = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &isCloaked, sizeof(isCloaked));
         return rt == S_OK && isCloaked;
     }
@@ -215,7 +215,7 @@ namespace Util {
 
         if (IsWindowVisible(hwnd)
             && !isWindowCloaked(hwnd)
-            && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker
+            && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker, QQ主面板（意料之外）
             && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性
             //            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
             && GetWindowTextLength(hwnd) > 0
@@ -282,6 +282,8 @@ namespace Util {
                     // 对于正常UWP窗口，Core只在Frame最小化时脱离AppFrame，变成top-level
                     // 如果Core是顶层，且AppFrame不是最小化，那么就是非正常窗口，舍弃
                     if (!IsIconic(hwnd) || !FindWindowW(LPCWSTR(AppCoreWindowClass.utf16()), LPCWSTR(title.utf16()))) {
+                        // 本来可以用于排除不可见的"设置" & "电影和电视" & "Realtek Audio Console"
+                        // 但是fix `isWindowCloaked()`之后，已经可以被其正确过滤了...
                         qDebug() << "#ignore UWP:" << title << hwnd;
                         continue;
                     }
