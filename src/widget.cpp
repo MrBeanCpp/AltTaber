@@ -381,6 +381,10 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
 void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, int windows) {
     qDebug() << "(Taskbar)Wheel on:" << exePath << forward << windows;
     if (exePath.isEmpty()) return;
+    if (!windows) { // 程序没有打开的窗口，处于关闭状态; 若不拦截，可能造成错误窗口被触发：explorer.exe -> msedge.exe
+        qDebug() << "No window for this app";
+        return;
+    }
 
     static QString lastPath;
     static HWND lastHwnd = nullptr;
