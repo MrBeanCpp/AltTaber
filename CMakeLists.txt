@@ -72,6 +72,10 @@ target_link_libraries(${PROJECT_NAME}
         Comctl32
 )
 
+# 启用`gui_private`模块
+# 必须放在find_package之后，否则`Qt5Gui_PRIVATE_INCLUDE_DIRS`变量未定义
+target_include_directories(${PROJECT_NAME} PRIVATE ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
+
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "AltTaber") # 设置输出文件名
 if (CMAKE_BUILD_TYPE MATCHES "Release")
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE true) # 设置为窗口应用程序, 无控制台，同时会导致Clion无法捕获输出

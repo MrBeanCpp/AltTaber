@@ -12,6 +12,7 @@
 #include <QtWin>
 #include <QWheelEvent>
 #include <QTimer>
+#include <QtGui/private/qhighdpiscaling_p.h>
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -247,14 +248,33 @@ bool Widget::prepareListWidget() {
         auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
         lw->setFixedWidth(width);
 
-        // move to center
-        auto screen = QApplication::primaryScreen(); // TODO maybe nullptr 处理多屏幕 & DPI
+        // move to scrren center
+        auto screen = QGuiApplication::screenAt(QCursor::pos()); // multi-screen support
+        if (!screen) { // fallback to primary screen
+            qWarning() << "Cursor Screen nullptr! Fallback to primary";
+            screen = QApplication::primaryScreen();
+        }
+        qDebug() << "Screen:" << screen->name();
         auto lwRect = lw->rect();
         auto thisRect = lwRect.marginsAdded(ListWidgetMargin);
         thisRect.moveCenter(screen->geometry().center());
-        this->setGeometry(thisRect); // global pos
+
+        // !!!WARNING: 对于多屏幕，直接使用setGeometry or move会报错(QWindowsWindow::setGeometry: Unable to set geometry) & size显示不正确！
+        // 报错时机为：从一个屏幕hide，再在另一个屏幕show; 第二次在同一个屏幕show，则正常
+        // size显示不正确不能忍，遂改用WinAPI
+        // this->setGeometry(thisRect);
+
+        this->windowHandle()->setScreen(screen); // 若首次显示是在副屏，会导致size显示错误（如果没有这行）
+        // `toNativePixels`是针对Point的，会根据屏幕原点进行位移
+        // 对于其他类型（如Size），直接乘以`QHighDpiScaling::factor(screen)`即可
+        auto physicalPos = QHighDpi::toNativePixels(thisRect.topLeft(), screen);
+        // !!!NOTE: 注意，开启Qt的DPI缩放后，坐标分逻辑/物理，但是窗口大小貌似只需关注逻辑大小（甚至在与Windows API交互时也不需要* factor）
+        // 非常奇怪，难道Qt监听了resize消息，自动缩放了窗口大小？离子谱
+        MoveWindow(hWnd(), physicalPos.x(), physicalPos.y(), thisRect.width(), thisRect.height(), TRUE);
+        // 如果用SetWindowPos的话要注意加上`SWP_NOACTIVATE`，否则焦点有问题，没错，NoActive反而是Active (focus)的
+
         lwRect.moveCenter(this->rect().center()); // local pos
-        lw->setGeometry(lwRect);
+        lw->move(lwRect.topLeft());
     } else {
         // no item, hide ? TODO
         return false;
