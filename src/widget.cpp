@@ -268,10 +268,10 @@ bool Widget::prepareListWidget() {
         // `toNativePixels`是针对Point的，会根据屏幕原点进行位移
         // 对于其他类型（如Size），直接乘以`QHighDpiScaling::factor(screen)`即可
         auto physicalPos = QHighDpi::toNativePixels(thisRect.topLeft(), screen);
-        // !!!NOTE: 注意，开启Qt的DPI缩放后，坐标分逻辑/物理，但是窗口大小貌似只需关注逻辑大小（甚至在与Windows API交互时也不需要* factor）
-        // 非常奇怪，难道Qt监听了resize消息，自动缩放了窗口大小？离子谱
-        MoveWindow(hWnd(), physicalPos.x(), physicalPos.y(), thisRect.width(), thisRect.height(), TRUE);
         // 如果用SetWindowPos的话要注意加上`SWP_NOACTIVATE`，否则焦点有问题，没错，NoActive反而是Active (focus)的
+        SetWindowPos(hWnd(), nullptr, physicalPos.x(), physicalPos.y(), 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+        // !!!NOTE: 用WinAPI控制size貌似有问题，在图标增减的时候，无法正确调整Width，离子谱；只能用resize
+        this->resize(thisRect.size());
 
         lwRect.moveCenter(this->rect().center()); // local pos
         lw->move(lwRect.topLeft());
