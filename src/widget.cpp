@@ -118,8 +118,10 @@ void Widget::keyPressEvent(QKeyEvent* event) {
 }
 
 bool Widget::forceShow() { // TODO 显示有闪烁 因为Qt::WA_TranslucentBackground，也许可以增加透明度动画，减弱影响
+    setWindowOpacity(0.005); // 减少闪烁发生 in showMinimized()
     showMinimized();
     showNormal();
+    setWindowOpacity(1);
     return isForeground();
 }
 
