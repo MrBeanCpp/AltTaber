@@ -358,7 +358,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
 
             static QListWidgetItem* lastItem = nullptr;
             static HWND hwnd = nullptr;
-            if (lastItem != item) { // Alt+Tab也可能造成切换
+            if (lastItem != item) { // Alt+Tab也可能造成切换; 每次show列表都是重新构建，所以item指针必然不同（即使通过各app）
                 lastItem = item;
                 hwnd = nullptr;
                 groupWindowOrder.clear();
@@ -411,11 +411,12 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
     static HWND lastHwnd = nullptr;
     if (lastPath != exePath) {
         lastPath = exePath;
-        lastHwnd = nullptr;
         groupWindowOrder.clear();
     }
-    if (groupWindowOrder.isEmpty())
+    if (groupWindowOrder.isEmpty()) {
         groupWindowOrder = buildGroupWindowOrder(exePath);
+        lastHwnd = nullptr;
+    }
 
     if (groupWindowOrder.isEmpty()) {
         qCritical() << "No window in group!" << exePath;
@@ -455,9 +456,11 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
 
     static bool isLastForward = true;
     HWND hwnd = nullptr;
-    if (!lastHwnd)
+    if (!lastHwnd) {
         hwnd = groupWindowOrder.first();
-    else {
+        if (hwnd == GetForegroundWindow()) // 如果first是前台窗口，则轮换下一个
+            hwnd = rotateWindowInGroup(groupWindowOrder, hwnd, true);
+    } else {
         if (isLastForward == forward)
             hwnd = rotateWindowInGroup(groupWindowOrder, lastHwnd, forward);
         else
@@ -482,8 +485,10 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
             // 隐藏TaskListThumbnailWnd也无效，会自动show
             // DwmSetWindowAttribute[DWMWA_FORCE_ICONIC_REPRESENTATION, DWMWA_DISALLOW_PEEK], 效果都不好，还是会刷新闪烁
 
+            // FIXME: 多屏幕会存在多个TaskListThumbnailWnd，需要找到visible的那一个然后判断是否属于当前屏幕
             // 只能采用偷鸡hack，按住左键的情况下，预览窗口会消失
             if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
+                qDebug() << "(Taskbar)#Press LButton";
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
                 QTimer::singleShot(20, this, [hwnd]() { // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
                     Util::switchToWindow(hwnd, true); // TODO thumbnail隐藏之前 不要switch，并且block滚轮 防止闪烁卡顿
