@@ -147,8 +147,8 @@ void Widget::showLabelForItem(QListWidgetItem* item, QString text) {
     labelRect.moveCenter(center);
 
     auto bound = this->rect().marginsRemoved({5, 0, 5, 0});
-    labelRect.moveLeft(qMax(labelRect.left(), bound.left()));
     labelRect.moveRight(qMin(labelRect.right(), bound.right()));
+    labelRect.moveLeft(qMax(labelRect.left(), bound.left())); // left align
 
     ui->label->move(labelRect.topLeft());
 }
