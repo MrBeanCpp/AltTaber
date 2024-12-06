@@ -465,4 +465,9 @@ namespace Util {
         }
         return nullptr;
     }
+
+    bool isTaskbarWindow(HWND hwnd) {
+        auto className = Util::getClassName(hwnd);
+        return className == QStringLiteral("Shell_TrayWnd") || className == QStringLiteral("Shell_SecondaryTrayWnd"); // 副屏
+    }
 } // Util

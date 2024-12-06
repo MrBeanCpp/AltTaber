@@ -31,6 +31,7 @@ namespace Util {
     HWND topWindowFromPoint(const POINT& pos);
     POINT getCursorPos();
     HWND getCurrentTaskListThumbnailWnd();
+    bool isTaskbarWindow(HWND hwnd);
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

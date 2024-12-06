@@ -9,7 +9,7 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION && wParam == WM_MOUSEWHEEL) {
         auto* data = (MSLLHOOKSTRUCT*) lParam;
         HWND topLevelHwnd = Util::topWindowFromPoint(data->pt);
-        if (Util::getClassName(topLevelHwnd) == "Shell_TrayWnd") {
+        if (Util::isTaskbarWindow(topLevelHwnd)) {
             auto delta = (short) HIWORD(data->mouseData);
 
             auto el = UIAutomation::getElementUnderMouse();
@@ -52,7 +52,7 @@ TaskbarWheelHooker::TaskbarWheelHooker() {
     timer->callOnTimeout(this, [this]() {
         static bool isLastTaskbar = false;
         HWND topLevelHwnd = Util::topWindowFromPoint(Util::getCursorPos());
-        bool isTaskbar = (Util::getClassName(topLevelHwnd) == QStringLiteral("Shell_TrayWnd")); // TODO 副屏是 Shell_SecondaryTrayWnd
+        bool isTaskbar = Util::isTaskbarWindow(topLevelHwnd);
         if (isLastTaskbar != isTaskbar) {
             isLastTaskbar = isTaskbar;
             if (isTaskbar) {
