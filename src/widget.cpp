@@ -86,7 +86,10 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         auto index = (i - (2 * isShiftPressed - 1) + lw->count()) % lw->count();
         lw->setCurrentRow(index);
     } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) { // Alt + `, 在前台窗口同组窗口内切换
-        if (this->isForeground()) return;
+        if (this->isForeground()) {
+            hide();
+            return;
+        }
         auto foreWin = GetForegroundWindow();
         if (groupWindowOrder.isEmpty()) {
             auto targetExe = Util::getWindowProcessPath(foreWin);

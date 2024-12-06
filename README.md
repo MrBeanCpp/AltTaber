@@ -23,6 +23,7 @@
 
 - 按住`Shift`反向切换
 - **最近活动**的窗口优先访问
+- 可用于隐藏`AltTaber`窗口（若可见）
 
 ![switch windows](img/Alt_`.gif)
 
