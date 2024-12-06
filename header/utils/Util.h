@@ -21,6 +21,7 @@ namespace Util {
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
     QList<HWND> listValidWindows(const QString& exePath);
+    QList<HWND> findTopWindows(const QString& className, const QString& title = QString());
     QIcon getJumboIcon(const QString& filePath);
     QIcon getCachedIcon(const QString& path);
     QPixmap getWindowIcon(HWND hwnd);
@@ -29,6 +30,7 @@ namespace Util {
     QIcon overlayIcon(const QPixmap& icon, const QPixmap& overlay, const QRect& overlayRect);
     HWND topWindowFromPoint(const POINT& pos);
     POINT getCursorPos();
+    HWND getCurrentTaskListThumbnailWnd();
 } // Util
 
 #endif //WIN_SWITCHER_UTIL_H

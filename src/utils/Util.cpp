@@ -306,6 +306,25 @@ namespace Util {
         return windows;
     }
 
+    /// Multi-windows version of `FindWindow`
+    /// <br> Only for top-level windows
+    QList<HWND> findTopWindows(const QString& className, const QString& title) {
+        // EnumWindows 枚举不到 TaskListThumbnailWnd 很奇怪，明明是顶层窗口
+        QList<HWND> windows;
+        auto pClassName = className.isNull() ? nullptr : LPCWSTR(className.utf16());
+        auto pTitle = title.isNull() ? nullptr : LPCWSTR(title.utf16());
+
+        if (HWND hwnd = FindWindow(pClassName, pTitle)) {
+            windows << hwnd;
+            // 按照Z序往下
+            // NULL 代表父窗口为桌面窗口
+            while ((hwnd = FindWindowEx(nullptr, hwnd, pClassName, pTitle)))
+                windows << hwnd;
+        }
+
+        return windows;
+    }
+
     /// Get 256x256 icon
     // 不用Index，直接用SHGetFileInfo获取图标的话，最大只能32x32
     // 对于QFileIconProvider的优势是可以多线程
@@ -433,5 +452,17 @@ namespace Util {
         POINT pos;
         GetCursorPos(&pos);
         return pos;
+    }
+
+    /// Get "TaskListThumbnailWnd" of current(cursor) monitor(screen)
+    HWND getCurrentTaskListThumbnailWnd() {
+        const QList<HWND> thumbs = findTopWindows("TaskListThumbnailWnd");
+        POINT cursorPos = getCursorPos();
+        const auto cursorMonitor = MonitorFromPoint(cursorPos, MONITOR_DEFAULTTONEAREST);
+        for (HWND hwnd: thumbs) {
+            if (auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL); monitor == cursorMonitor)
+                return hwnd;
+        }
+        return nullptr;
     }
 } // Util

@@ -490,7 +490,7 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
 
             // FIXME: 多屏幕会存在多个TaskListThumbnailWnd，需要找到visible的那一个然后判断是否属于当前屏幕
             // 只能采用偷鸡hack，按住左键的情况下，预览窗口会消失
-            if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
+            if (HWND thumbnail = Util::getCurrentTaskListThumbnailWnd(); IsWindowVisible(thumbnail)) {
                 qDebug() << "(Taskbar)#Press LButton";
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
                 QTimer::singleShot(20, this, [hwnd]() { // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
@@ -511,7 +511,7 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
                     // 只能通过将焦点转移到Taskbar使其隐藏
                     // 直接 HIDE thumbnail 不太行，会导致之后restore窗口时 thumbnail刷新 + 窗口闪烁，闪瞎了
                     QTimer::singleShot(100, this, []() { // 50ms 等待thumbnail显示
-                        if (HWND thumbnail = FindWindow(L"TaskListThumbnailWnd", nullptr); IsWindowVisible(thumbnail)) {
+                        if (HWND thumbnail = Util::getCurrentTaskListThumbnailWnd(); IsWindowVisible(thumbnail)) {
                             if (HWND taskbar = FindWindow(L"Shell_TrayWnd", nullptr))
                                 Util::switchToWindow(taskbar, true);
                         }
