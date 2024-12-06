@@ -274,6 +274,8 @@ bool Widget::prepareListWidget() {
         // 如果用SetWindowPos的话要注意加上`SWP_NOACTIVATE`，否则焦点有问题，没错，NoActive反而是Active (focus)的
         SetWindowPos(hWnd(), nullptr, physicalPos.x(), physicalPos.y(), 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
         // !!!NOTE: 用WinAPI控制size貌似有问题，在图标增减的时候，无法正确调整Width，离子谱；只能用resize
+        // 1. × 猜想是showNormal()恢复了原有的size，导致resize无效；但是改成show()也不行
+        // 2. 猜想是隐藏状态改变size无效？（不科学吧），但是在`SetWindowPos`前show()好像会好一点（第二次显示调整size成功）aaa
         this->resize(thisRect.size());
 
         lwRect.moveCenter(this->rect().center()); // local pos
@@ -488,7 +490,6 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
             // 隐藏TaskListThumbnailWnd也无效，会自动show
             // DwmSetWindowAttribute[DWMWA_FORCE_ICONIC_REPRESENTATION, DWMWA_DISALLOW_PEEK], 效果都不好，还是会刷新闪烁
 
-            // FIXME: 多屏幕会存在多个TaskListThumbnailWnd，需要找到visible的那一个然后判断是否属于当前屏幕
             // 只能采用偷鸡hack，按住左键的情况下，预览窗口会消失
             if (HWND thumbnail = Util::getCurrentTaskListThumbnailWnd(); IsWindowVisible(thumbnail)) {
                 qDebug() << "(Taskbar)#Press LButton";

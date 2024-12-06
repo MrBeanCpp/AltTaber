@@ -22,7 +22,7 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
                 qDebug() << (el.getClassName() != "CEF-OSC-WIDGET" ? "successful!" : "failed");
             }
             if (el.getClassName() == "Taskbar.TaskListButtonAutomationPeer") {
-                auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size());
+                auto appid = el.getAutomationId().mid(QStringLiteral("Appid: ").size()); // TODO 在副屏 有时候会是"TaskbarFrame"
                 auto name = el.getName();
                 int windows = 0;
                 const auto Dash = QStringLiteral(" - ");
