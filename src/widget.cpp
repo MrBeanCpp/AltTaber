@@ -526,11 +526,12 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
         qDebug() << "(Taskbar)Switch to" << hwnd << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
     } else {
         if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
-            ShowWindow(normal, SW_MINIMIZE); // SW_MINIMIZE 会让焦点自动回落到下一个窗口
+            hwnd = normal;
+            ShowWindow(hwnd, SW_MINIMIZE); // SW_MINIMIZE 会让焦点自动回落到下一个窗口
             // 当所有窗口隐藏后，getElementUnderMouse() 会变成"CEF-OSC-WIDGET"，但是焦点和前台窗口并不是他，离谱
             // 此时Automation对鼠标下任务栏Element的判定会出错，solution为手动变焦到任务栏（见TaskbarWheelHooker.cpp）
             // SW_SHOWMINNOACTIVE不会切换焦点，即便本窗口已经最小化，但仍然持有焦点；但这不是合理的行为，同时会让QQ Follower反复弹出
-            qDebug() << "(Taskbar)Minimize" << hwnd << Util::getWindowTitle(normal) << Util::getClassName(normal);
+            qDebug() << "(Taskbar)Minimize" << hwnd << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
         }
     }
 
