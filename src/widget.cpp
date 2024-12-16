@@ -404,6 +404,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
     return false;
 }
 
+/// `forward`: true for restore, false for minimize
 void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, int windows) {
     qDebug() << "(Taskbar)Wheel on:" << exePath << forward << windows;
     if (exePath.isEmpty()) return;
@@ -463,7 +464,7 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
     HWND hwnd = nullptr;
     if (!lastHwnd) {
         hwnd = groupWindowOrder.first();
-        if (hwnd == GetForegroundWindow()) // 如果first是前台窗口，则轮换下一个
+        if (forward && hwnd == GetForegroundWindow()) // 如果first是前台窗口且forward，则轮换下一个
             hwnd = rotateWindowInGroup(groupWindowOrder, hwnd, true);
     } else {
         if (isLastForward == forward)
@@ -526,6 +527,8 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
         qDebug() << "(Taskbar)Switch to" << hwnd << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd);
     } else {
         if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false)) { // skip minimized
+            if (normal != hwnd)
+                qDebug() << "(Taskbar)Skip minimized" << hwnd << "->" << normal;
             hwnd = normal;
             ShowWindow(hwnd, SW_MINIMIZE); // SW_MINIMIZE 会让焦点自动回落到下一个窗口
             // 当所有窗口隐藏后，getElementUnderMouse() 会变成"CEF-OSC-WIDGET"，但是焦点和前台窗口并不是他，离谱
