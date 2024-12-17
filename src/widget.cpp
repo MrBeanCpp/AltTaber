@@ -86,7 +86,9 @@ void Widget::keyPressEvent(QKeyEvent* event) {
         auto index = (i - (2 * isShiftPressed - 1) + lw->count()) % lw->count();
         lw->setCurrentRow(index);
     } else if (key == Qt::Key_QuoteLeft && (modifiers & Qt::AltModifier)) { // Alt + `, 在前台窗口同组窗口内切换
-        if (this->isForeground()) {
+        if (this->isVisible() && !this->isMinimized()) {
+            // isVisible() == true if minimized
+            // 不使用`isForeground()`，即使`bringWindowToTop`(without active)，少数窗口也可能抢夺焦点，如`CAJViewer`
             hide();
             return;
         }
