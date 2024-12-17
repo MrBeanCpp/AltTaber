@@ -10,6 +10,7 @@
 IUIAutomation* UIAutomation::pAutomation = nullptr;
 
 bool UIAutomation::init() {
+    qDebug() << "UIAutomation initializing";
     HRESULT hr = CoInitialize(nullptr);
     if (FAILED(hr)) {
         qCritical() << "Failed to initialize COM library.";
@@ -30,14 +31,22 @@ bool UIAutomation::init() {
 /// based on physical cursor position
 UIElement UIAutomation::getElementUnderMouse() {
     if (!pAutomation) {
-        if (!init())
+        if (!init()) {
+            qWarning() << "Failed to initialize UIAutomation.";
             return {};
+        }
     }
 
     POINT pt;
     GetCursorPos(&pt);
     IUIAutomationElement* pElement = nullptr;
-    pAutomation->ElementFromPoint(pt, &pElement);
+    auto hr = pAutomation->ElementFromPoint(pt, &pElement);
+
+    if (FAILED(hr) || !pElement) {
+        qWarning() << "Failed to get element under mouse." << hr << pElement;
+        return {};
+    }
+
     return UIElement{pElement};
 }
 
@@ -68,20 +77,28 @@ void UIAutomation::cleanup() {
 QString UIElement::getName() const {
     if (!pElement) return {};
 
+    QString res;
     BSTR name;
-    pElement->get_CurrentName(&name);
-    QString res = QString::fromWCharArray(name);
-    SysFreeString(name);
+    if (auto hr = pElement->get_CurrentName(&name); SUCCEEDED(hr)) {
+        res = QString::fromWCharArray(name);
+        SysFreeString(name);
+    } else {
+        qWarning() << "Failed to get name." << hr;
+    }
     return res;
 }
 
 QString UIElement::getClassName() const {
     if (!pElement) return {};
 
+    QString res;
     BSTR className;
-    pElement->get_CurrentClassName(&className);
-    QString res = QString::fromWCharArray(className);
-    SysFreeString(className);
+    if (auto hr = pElement->get_CurrentClassName(&className); SUCCEEDED(hr)) {
+        res = QString::fromWCharArray(className);
+        SysFreeString(className);
+    } else {
+        qWarning() << "Failed to get class name." << hr;
+    }
     return res;
 }
 
@@ -128,9 +145,13 @@ QString UIElement::getSelfOrParentNativeWindowClass() const {
 QString UIElement::getAutomationId() const {
     if (!pElement) return {};
 
+    QString res;
     BSTR id;
-    pElement->get_CurrentAutomationId(&id);
-    QString res = QString::fromWCharArray(id);
-    SysFreeString(id);
+    if (auto hr = pElement->get_CurrentAutomationId(&id); SUCCEEDED(hr)) {
+        res = QString::fromWCharArray(id);
+        SysFreeString(id);
+    } else {
+        qWarning() << "Failed to get automation id." << hr;
+    }
     return res;
 }

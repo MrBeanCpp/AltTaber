@@ -11,8 +11,8 @@ LRESULT mouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
         HWND topLevelHwnd = Util::topWindowFromPoint(data->pt);
         if (Util::isTaskbarWindow(topLevelHwnd)) {
             auto delta = (short) HIWORD(data->mouseData);
-
-            auto el = UIAutomation::getElementUnderMouse();
+            qDebug() << "--- Taskbar Mouse Wheel" << (delta > 0 ? "↑" : "↓");
+            auto el = UIAutomation::getElementUnderMouse(); // RVO优化 不会调用移动构造; // this line may bomb TODO 也许可以改成遍历元素
             qDebug() << delta << el.getClassName() << el.getAutomationId() << el.getName();
             if (el.getClassName() == "CEF-OSC-WIDGET") { // Nvidia Overlay
                 // 当所有窗口最小化后，会出现这种情况，但是焦点和前台都不是他，离谱
