@@ -6,9 +6,12 @@
 #include "utils/Util.h"
 #include "utils/TaskbarWheelHooker.h"
 #include "utils/KeyboardHooker.h"
+#include "utils/ComInitializer.h"
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
+    // 其实Qt内部已经初始化了，这里是保险起见
+    ComInitializer com; // 初始化COM组件 for 主线程
 
     auto* winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)

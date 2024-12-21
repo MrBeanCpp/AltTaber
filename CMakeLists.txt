@@ -59,7 +59,8 @@ add_executable(Win_Switcher src/main.cpp
         src/utils/TaskbarWheelHooker.cpp
         header/utils/TaskbarWheelHooker.h
         src/utils/QtWin.cpp
-        header/utils/QtWin.h)
+        header/utils/QtWin.h
+        header/utils/ComInitializer.h)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui
