@@ -5,13 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_PREFIX_PATH "D:/Qt/5.15.2/msvc2019_64")
+set(CMAKE_PREFIX_PATH "D:/Qt/6.8.1/msvc2022_64/lib/cmake")
 list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS ui) # 如果.ui文件不在.cpp同一目录下，需要添加搜索路径
 
 # 设置版本信息变量
 set(VERSION_MAJOR 0)
-set(VERSION_MINOR 2)
-set(VERSION_PATCH 1)
+set(VERSION_MINOR 3)
+set(VERSION_PATCH 0)
 
 set(COMPANY_NAME "MrBeanCpp")
 set(FILE_DESCRIPTION "AltTaber - Window Switcher")
@@ -30,11 +30,10 @@ configure_file(
 
 include_directories(header)
 
-find_package(Qt5 COMPONENTS
+find_package(Qt6 COMPONENTS
         Core
         Gui
         Widgets
-        WinExtras
         Xml
         REQUIRED)
 
@@ -58,12 +57,13 @@ add_executable(Win_Switcher src/main.cpp
         src/utils/KeyboardHooker.cpp
         header/utils/KeyboardHooker.h
         src/utils/TaskbarWheelHooker.cpp
-        header/utils/TaskbarWheelHooker.h)
+        header/utils/TaskbarWheelHooker.h
+        src/utils/QtWin.cpp
+        header/utils/QtWin.h)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui
         Qt::Widgets
-        Qt::WinExtras
         Qt::Xml
 )
 
@@ -73,8 +73,8 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # 启用`gui_private`模块
-# 必须放在find_package之后，否则`Qt5Gui_PRIVATE_INCLUDE_DIRS`变量未定义
-target_include_directories(${PROJECT_NAME} PRIVATE ${Qt5Gui_PRIVATE_INCLUDE_DIRS})
+# 必须放在find_package之后，否则`Qt6Gui_PRIVATE_INCLUDE_DIRS`变量未定义
+target_include_directories(${PROJECT_NAME} PRIVATE ${Qt6Gui_PRIVATE_INCLUDE_DIRS})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "AltTaber") # 设置输出文件名
 if (CMAKE_BUILD_TYPE MATCHES "Release")

@@ -5,7 +5,7 @@
 #include <psapi.h>
 #include <QFileInfo>
 #include <QDir>
-#include <QtWin>
+#include "utils/QtWin.h"
 #include <commoncontrols.h>
 #include <ShObjIdl_core.h>
 #include <QDomDocument>

@@ -9,7 +9,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QDateTime>
-#include <QtWin>
+#include "utils/QtWin.h"
 #include <QWheelEvent>
 #include <QTimer>
 #include <QtGui/private/qhighdpiscaling_p.h>
