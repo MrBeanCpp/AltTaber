@@ -65,6 +65,7 @@
 - 在`QQ`🐧图标右下角显示当前聊天好友`头像`
     - ![qq avatar](img/app%20qq%20avatar.png)
 - 支持在更高权限窗口上使用`Alt+Tab`切换
+- 更合理的窗口过滤规则
 
 ## ✒️TO-DO
 
