@@ -12,7 +12,6 @@
 #include "utils/QtWin.h"
 #include <QWheelEvent>
 #include <QTimer>
-#include <QtGui/private/qhighdpiscaling_p.h>
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -264,21 +263,25 @@ bool Widget::prepareListWidget() {
         auto thisRect = lwRect.marginsAdded(ListWidgetMargin);
         thisRect.moveCenter(screen->geometry().center());
 
-        // !!!WARNING: 对于多屏幕，直接使用setGeometry or move会报错(QWindowsWindow::setGeometry: Unable to set geometry) & size显示不正确！
-        // 报错时机为：从一个屏幕hide，再在另一个屏幕show; 第二次在同一个屏幕show，则正常
-        // size显示不正确不能忍，遂改用WinAPI
-        // this->setGeometry(thisRect);
+        //region Fixed in Qt6, see commit [b927ee4b]
+        //      !!!WARNING: 对于多屏幕，直接使用setGeometry or move会报错(QWindowsWindow::setGeometry: Unable to set geometry) & size显示不正确！
+        //      报错时机为：从一个屏幕hide，再在另一个屏幕show; 第二次在同一个屏幕show，则正常
+        //      size显示不正确不能忍，遂改用WinAPI
+        //endregion
+        this->setGeometry(thisRect);
 
-        this->windowHandle()->setScreen(screen); // 若首次显示是在副屏，会导致size显示错误（如果没有这行）
+        //region Fixed in Qt6, see commit [b927ee4b]
+        //this->windowHandle()->setScreen(screen); // 若首次显示是在副屏，会导致size显示错误（如果没有这行）
         // `toNativePixels`是针对Point的，会根据屏幕原点进行位移
         // 对于其他类型（如Size），直接乘以`QHighDpiScaling::factor(screen)`即可
-        auto physicalPos = QHighDpi::toNativePixels(thisRect.topLeft(), screen);
+        //auto physicalPos = QHighDpi::toNativePixels(thisRect.topLeft(), screen);
         // 如果用SetWindowPos的话要注意加上`SWP_NOACTIVATE`，否则焦点有问题，没错，NoActive反而是Active (focus)的
-        SetWindowPos(hWnd(), nullptr, physicalPos.x(), physicalPos.y(), 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+        //SetWindowPos(hWnd(), nullptr, physicalPos.x(), physicalPos.y(), 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
         // !!!NOTE: 用WinAPI控制size貌似有问题，在图标增减的时候，无法正确调整Width，离子谱；只能用resize
         // 1. × 猜想是showNormal()恢复了原有的size，导致resize无效；但是改成show()也不行
         // 2. 猜想是隐藏状态改变size无效？（不科学吧），但是在`SetWindowPos`前show()好像会好一点（第二次显示调整size成功）aaa
-        this->resize(thisRect.size());
+        //this->resize(thisRect.size());
+        //endregion
 
         lwRect.moveCenter(this->rect().center()); // local pos
         lw->move(lwRect.topLeft());
