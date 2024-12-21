@@ -60,11 +60,11 @@ add_executable(Win_Switcher src/main.cpp
         src/utils/TaskbarWheelHooker.cpp
         header/utils/TaskbarWheelHooker.h)
 target_link_libraries(Win_Switcher
-        Qt5::Core
-        Qt5::Gui
-        Qt5::Widgets
-        Qt5::WinExtras
-        Qt5::Xml
+        Qt::Core
+        Qt::Gui
+        Qt::Widgets
+        Qt::WinExtras
+        Qt::Xml
 )
 
 target_link_libraries(${PROJECT_NAME}
