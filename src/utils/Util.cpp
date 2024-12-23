@@ -212,6 +212,7 @@ namespace Util {
                 "QQ Follower.exe"
         };
         LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        QString className;
 
         if (IsWindowVisible(hwnd)
             && !isWindowCloaked(hwnd)
@@ -219,7 +220,9 @@ namespace Util {
             && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性
             //            && (exStyle & WS_EX_TOPMOST) == 0 // 非置顶窗口
             && GetWindowTextLength(hwnd) > 0
-            && !BlackList_ClassName.contains(getClassName(hwnd))
+            && (className = getClassName(hwnd)).size() > 0 // cache
+            && !BlackList_ClassName.contains(className)
+            && !className.startsWith("imestatuspop_classname{") // 输入法（的推销弹窗）https://s3.bmp.ovh/imgs/2024/12/23/bb136fde101a41ce.png
                 ) {
             auto path = getWindowProcessPath(hwnd); // 耗时操作，减少次数
             if (!BlackList_ExePath.contains(path) && !BlackList_FileName.contains(QFileInfo(path).fileName()))
