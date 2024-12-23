@@ -30,7 +30,7 @@ bool setWinEventHook(WinEventCallback _callback) {
             WinEventProc,
             0,
             0,
-            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS // 跳过自身进程的事件
     );
 
     qDebug() << "Set WinEventHook.";

@@ -34,11 +34,15 @@ int main(int argc, char* argv[]) {
         // 此时需要通过监控前台窗口检测系统的任务切换窗口唤出，并弹出本程序
         // 一旦焦点脱离VMWare，Hook就能正常工作，接下里就可以正常拦截Alt+Tab
         // 而再次连续按下TAB（Alt按住的情况下），也不会出现反复弹出系统任务切换窗口的情况（如果不进行Hook拦截就会这样，所以两种方法结合使用）
-        if (event == EVENT_SYSTEM_FOREGROUND && hwnd == GetForegroundWindow()) { // 前台窗口变化 TODO 记录窗口关闭事件
-            // 使用Alt+TAB呼出任务切换窗口时，会触发两次EVENT_SYSTEM_FOREGROUND事件
+        if (event == EVENT_SYSTEM_FOREGROUND/* && hwnd == GetForegroundWindow()*/) { // 前台窗口变化 TODO 记录窗口关闭事件
+            // 使用[原生]Alt+TAB呼出任务切换窗口时，会触发两次EVENT_SYSTEM_FOREGROUND事件
             // 第二次是在目标窗口已经切换到前台后触发的，非常诡异
-            // 可以用 GetForegroundWindow() || isAltPressed 来二次确认
-            winSwitcher->notifyForegroundChanged(hwnd);
+            // ^1 可以用 GetForegroundWindow() || isAltPressed 来二次确认 （或者过滤相邻相同hwnd）
+
+            // 对于Follower启动的CMD，由于Follower先行隐藏，会导致焦点先回落到上个窗口，再到新窗口 （但是用Win键打开的cmd没事）
+            // 但是此时GetForegroundWindow()还是上个窗口，可能是更新不及时，所以 ^1-1 处的方案不可行
+            // 问题不大，本程序hook了Alt+Tab，已经不会出现两次Event了
+            winSwitcher->notifyForegroundChanged(hwnd, Widget::WinEvent);
             auto className = Util::getClassName(hwnd);
             // ForegroundStaging貌似是辅助过渡动画
             if (className == "ForegroundStaging" || className == "XamlExplorerHostIslandWindow") { // 任务切换窗口

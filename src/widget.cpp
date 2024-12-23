@@ -12,6 +12,7 @@
 #include "utils/QtWin.h"
 #include <QWheelEvent>
 #include <QTimer>
+#include <QMetaEnum>
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -190,16 +191,21 @@ void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
 }
 
 /// 通知前台窗口变化
-void Widget::notifyForegroundChanged(HWND hwnd) { // TODO isVisible or AltDown时，关闭前台更新通知
+/// @param hwnd 前台窗口句柄
+/// @param source 通知来源, for debug, @b Optional
+void Widget::notifyForegroundChanged(HWND hwnd, ForegroundChangeSource source) { // TODO isVisible or AltDown时，关闭前台更新通知
     if (hwnd == this->hWnd()) return;
-    if (!Util::isWindowAcceptable(hwnd)) return;
+    // （其实监听前台变化只是为了排序，不需要太精确，可以放松限制）
+    // 通过`EVENT_SYSTEM_FOREGROUND`触发时忽略`IsWindowVisible`，因为窗口在创建瞬间可能不可见
+    if (!Util::isWindowAcceptable(hwnd, source == WinEvent)) return;
     auto path = Util::getWindowProcessPath(hwnd); // TODO 比较耗时，最好仅在单次show期间缓存，同时避免hwnd复用造成缓存错误
     // TODO 不能让winActiveOrder无限增长，需要定时清理
     winActiveOrder[path].insert(hwnd, QDateTime::currentDateTime());
-    qDebug() << "Focus changed:" << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
+
+    auto sourceStr = QMetaEnum::fromType<ForegroundChangeSource>().valueToKey(source);
+    qDebug() << qUtf8Printable(QString("*ForeWin changed (%1):").arg(sourceStr)) // qUtf8Printable removes quotes ""
+             << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
-// FIXME BUG: QQFollower & Follower & 通过其打开的cmd 不会触发前台变化通知！ 但是用Win键打开的可以
-//  原因有2：hwnd != GetForgroundWindow(), !IsWindowVisible()（那瞬间），貌似只有Terminal比较特殊
 
 /// collect, filter, sort Windows for presentation
 QList<WindowGroup> Widget::prepareWindowGroupList() {
@@ -368,7 +374,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
 
             static QListWidgetItem* lastItem = nullptr;
             static HWND hwnd = nullptr;
-            if (lastItem != item) { // Alt+Tab也可能造成切换; 每次show列表都是重新构建，所以item指针必然不同（即使通过各app）
+            if (lastItem != item) { // Alt+Tab也可能造成切换; 每次show列表都是重新构建，所以item指针必然不同（即使同一个app）
                 lastItem = item;
                 hwnd = nullptr;
                 groupWindowOrder.clear();
@@ -399,7 +405,7 @@ bool Widget::eventFilter(QObject* watched, QEvent* event) {
                 if (auto normal = rotateNormalWindowInGroup(groupWindowOrder, hwnd, false))
                     nextFocus = normal; // 备选焦点切换为下一个非最小化窗口 after AltUp
             }
-            notifyForegroundChanged(nextFocus);
+            notifyForegroundChanged(nextFocus, Inner);
             showLabelForItem(item, Util::getWindowTitle(nextFocus));
             qDebug() << "Wheel" << isRollUp << Util::getWindowTitle(nextFocus) << hwnd;
 

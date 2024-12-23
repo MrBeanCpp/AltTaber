@@ -195,7 +195,9 @@ namespace Util {
     }
 
     /// filter HWND by some rules
-    bool isWindowAcceptable(HWND hwnd) {
+    /// @param skipVisibleCheck skip IsWindowVisible check<br>
+    /// 在窗口创建过程中，会触发 EVENT_SYSTEM_FOREGROUND，但是这瞬间 IsWindowVisible 为false
+    bool isWindowAcceptable(HWND hwnd, bool skipVisibleCheck) {
         static const QStringList BlackList_ClassName = {
                 "Progman",
                 "Windows.UI.Core.CoreWindow", // 过滤UWP Core，从Frame入手
@@ -214,7 +216,7 @@ namespace Util {
         LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         QString className;
 
-        if (IsWindowVisible(hwnd)
+        if ((skipVisibleCheck || IsWindowVisible(hwnd))
             && !isWindowCloaked(hwnd)
             && !GetWindow(hwnd, GW_OWNER) // OmApSvcBroker, QQ主面板（意料之外）
             && (exStyle & WS_EX_TOOLWINDOW) == 0 // 非工具窗口，但其实有些工具窗口没有这个这个属性

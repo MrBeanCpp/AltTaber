@@ -40,17 +40,26 @@ QT_END_NAMESPACE
 
 class Widget : public QWidget {
 Q_OBJECT
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
 
 public:
+    enum ForegroundChangeSource {
+        WinEvent,
+        Inner,
+    };
+
+    Q_ENUM(ForegroundChangeSource) // for QMetaEnum, to QString
+
+public:
     explicit Widget(QWidget* cur = nullptr);
     QList<WindowGroup> prepareWindowGroupList();
     bool prepareListWidget();
     Q_INVOKABLE bool requestShow();
-    void notifyForegroundChanged(HWND hwnd);
+    void notifyForegroundChanged(HWND hwnd, ForegroundChangeSource source);
 
     HWND hWnd() { return (HWND) winId(); }
 

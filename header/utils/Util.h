@@ -16,7 +16,7 @@ namespace Util {
     bool isTopMost(HWND hwnd);
     void switchToWindow(HWND hwnd, bool force = false);
     void bringWindowToTop(HWND hwnd, HWND hWndInsertAfter = HWND_TOPMOST);
-    bool isWindowAcceptable(HWND hwnd);
+    bool isWindowAcceptable(HWND hwnd, bool skipVisibleCheck = false);
     QList<HWND> enumWindows();
     QList<HWND> enumChildWindows(HWND hwnd);
     QList<HWND> listValidWindows();
