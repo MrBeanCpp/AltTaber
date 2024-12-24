@@ -124,8 +124,6 @@ namespace Util {
     }
 
     QString getFileDescription(const QString& path) {
-        CoInitialize(nullptr); // 初始化 COM 库
-
         QString desc = QFileInfo(path).completeBaseName(); // fallback to base name
 
         // 使用 CComPtr 自动释放 IShellItem2 接口
@@ -143,7 +141,6 @@ namespace Util {
             qWarning() << "SHCreateItemFromParsingName() failed";
         }
 
-        CoUninitialize(); // 取消初始化 COM 库
         return desc;
     }
 

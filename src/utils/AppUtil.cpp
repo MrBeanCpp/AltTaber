@@ -252,8 +252,6 @@ namespace AppUtil {
 
     /// name, appid, exePath
     QList<std::tuple<QString, QString, QString>> getStartAppList() {
-        auto co_init = CoInitialize(nullptr);
-
         IShellItem* psi = nullptr;
         // like Get-StartApps
         HRESULT hr = SHCreateItemInKnownFolder(FOLDERID_AppsFolder, 0, nullptr, IID_PPV_ARGS(&psi));
@@ -307,9 +305,6 @@ namespace AppUtil {
             }
             psi->Release();
         }
-
-        if (SUCCEEDED(co_init))
-            CoUninitialize();
 
         return appList;
     }

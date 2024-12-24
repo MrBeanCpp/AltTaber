@@ -11,17 +11,10 @@ IUIAutomation* UIAutomation::pAutomation = nullptr;
 
 bool UIAutomation::init() {
     qDebug() << "UIAutomation initializing";
-    HRESULT hr = CoInitialize(nullptr);
-    if (FAILED(hr)) {
-        qCritical() << "Failed to initialize COM library.";
-        return false;
-    }
-
     pAutomation = nullptr;
-    hr = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_IUIAutomation, (void**) &pAutomation);
+    HRESULT hr = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_IUIAutomation, (void**) &pAutomation);
     if (FAILED(hr) || !pAutomation) {
         qCritical() << "Failed to create UIAutomation instance.";
-        CoUninitialize();
         return false;
     }
 
@@ -70,7 +63,6 @@ void UIAutomation::cleanup() {
     if (pAutomation) {
         pAutomation->Release();
         pAutomation = nullptr;
-        CoUninitialize();
     }
 }
 
