@@ -70,7 +70,6 @@ target_link_libraries(Win_Switcher
 
 target_link_libraries(${PROJECT_NAME}
         Dwmapi
-        Comctl32
 )
 
 # 启用`gui_private`模块

@@ -3,10 +3,6 @@
 #include <QDebug>
 #include "utils/Util.h"
 
-#pragma comment(lib, "Oleacc.lib")
-#pragma comment(lib, "OleAut32.lib")
-
-
 IUIAutomation* UIAutomation::pAutomation = nullptr;
 
 bool UIAutomation::init() {
@@ -14,7 +10,7 @@ bool UIAutomation::init() {
     pAutomation = nullptr;
     HRESULT hr = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_IUIAutomation, (void**) &pAutomation);
     if (FAILED(hr) || !pAutomation) {
-        qCritical() << "Failed to create UIAutomation instance.";
+        qCritical() << "Failed to create UIAutomation instance." << qt_error_string(hr);
         return false;
     }
 
@@ -36,7 +32,7 @@ UIElement UIAutomation::getElementUnderMouse() {
     auto hr = pAutomation->ElementFromPoint(pt, &pElement);
 
     if (FAILED(hr) || !pElement) {
-        qWarning() << "Failed to get element under mouse." << hr << pElement;
+        qWarning() << "Failed to get element under mouse." << hr << pElement << qt_error_string(hr);
         return {};
     }
 
