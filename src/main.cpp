@@ -1,15 +1,24 @@
 ﻿#include <QApplication>
 #include <windows.h>
 #include <QTimer>
+#include <QMessageBox>
 #include "../header/widget.h"
 #include "utils/winEventHook.h"
 #include "utils/Util.h"
 #include "utils/TaskbarWheelHooker.h"
 #include "utils/KeyboardHooker.h"
 #include "utils/ComInitializer.h"
+#include "utils/SingleApp.h"
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
+    SingleApp singleApp("AltTaber-MrBeanCpp");
+    if (singleApp.isRunning()) {
+        qWarning() << "Another instance is running! Exit";
+        QMessageBox::warning(nullptr, "Warning", "AltTaber is already running!");
+        return 0;
+    }
+
     // 其实Qt内部已经初始化了，这里是保险起见
     ComInitializer com; // 初始化COM组件 for 主线程
     qDebug() << qt_error_string(S_OK); // just for fun
