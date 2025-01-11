@@ -39,6 +39,7 @@ find_package(Qt6 COMPONENTS
 
 add_executable(Win_Switcher src/main.cpp
         ${VERSIONINFO_RC}
+        res.qrc
         src/widget.cpp
         header/widget.h
         ui/widget.ui
@@ -61,7 +62,9 @@ add_executable(Win_Switcher src/main.cpp
         src/utils/QtWin.cpp
         header/utils/QtWin.h
         header/utils/ComInitializer.h
-        header/utils/SingleApp.h)
+        header/utils/SingleApp.h
+        header/utils/Startup.h
+        header/utils/SystemTray.h)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui

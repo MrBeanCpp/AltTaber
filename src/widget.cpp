@@ -10,6 +10,7 @@
 #include <QPen>
 #include <QDateTime>
 #include "utils/QtWin.h"
+#include "utils/SystemTray.h"
 #include <QWheelEvent>
 #include <QTimer>
 #include <QMetaEnum>
@@ -26,6 +27,9 @@ Widget::Widget(QWidget* parent) :
 
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
+
+    auto* sysTray = new SystemTray(this);
+    sysTray->show();
 
     lw->setViewMode(QListView::IconMode);
     lw->setMovement(QListView::Static);
