@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <QListWidget>
 #include <QDebug>
+#include "utils/SystemTray.h"
 
 struct WindowGroup;
 struct WindowInfo {
@@ -83,6 +84,7 @@ private:
 private:
     Ui::Widget* ui;
     QListWidget* lw = nullptr;
+    SystemTray* sysTray = nullptr;
     const QMargins ListWidgetMargin{24, 24, 24, 24};
     /// exePath -> (HWND, time)
     QHash<QString, QHash<HWND, QDateTime>> winActiveOrder;

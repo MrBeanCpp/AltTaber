@@ -10,10 +10,10 @@
 #include <QPen>
 #include <QDateTime>
 #include "utils/QtWin.h"
-#include "utils/SystemTray.h"
 #include <QWheelEvent>
 #include <QTimer>
 #include <QMetaEnum>
+#include "utils/ConfigManager.h"
 
 Widget::Widget(QWidget* parent) :
         QWidget(parent), ui(new Ui::Widget) {
@@ -28,7 +28,7 @@ Widget::Widget(QWidget* parent) :
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
-    auto* sysTray = new SystemTray(this);
+    sysTray = new SystemTray(this);
     sysTray->show();
 
     lw->setViewMode(QListView::IconMode);
@@ -262,12 +262,22 @@ bool Widget::prepareListWidget() {
         auto width = lw->gridSize().width() * lw->count() + (firstRect.x() - lw->frameWidth()); // 一些微小的噼里啪啦修正
         lw->setFixedWidth(width);
 
-        // move to scrren center
-        auto screen = QGuiApplication::screenAt(QCursor::pos()); // multi-screen support
-        if (!screen) { // fallback to primary screen
+        // get screen
+        bool displayOnPrimary = (cfg.getDisplayMonitor() == PrimaryMonitor);
+        auto screen = displayOnPrimary ?
+                      QGuiApplication::primaryScreen() :
+                      QGuiApplication::screenAt(QCursor::pos()); // multi-screen support
+        if (!screen && !displayOnPrimary) { // fallback to primary screen
             qWarning() << "Cursor Screen nullptr! Fallback to primary";
             screen = QApplication::primaryScreen();
         }
+        if (!screen) {
+            qWarning() << "Screen nullptr!";
+            sysTray->showMessage("Error", "Screen nullptr!");
+            return false;
+        }
+
+        // move to scrren center
         qDebug() << "Screen:" << screen->name();
         auto lwRect = lw->rect();
         auto thisRect = lwRect.marginsAdded(ListWidgetMargin);

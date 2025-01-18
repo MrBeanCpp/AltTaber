@@ -64,7 +64,9 @@ add_executable(Win_Switcher src/main.cpp
         header/utils/ComInitializer.h
         header/utils/SingleApp.h
         header/utils/Startup.h
-        header/utils/SystemTray.h)
+        header/utils/SystemTray.h
+        header/utils/ConfigManager.h
+        header/utils/ConfigManagerBase.h)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui

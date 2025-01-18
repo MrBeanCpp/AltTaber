@@ -16,7 +16,7 @@ public:
                               QColor selectedColor = QColor(80, 80, 80, 200),
                               QColor hoverColor = QColor(50, 50, 50, 100),
                               int radius = 8)
-            : selectedColor(std::move(selectedColor)), hoverColor(std::move(hoverColor)), radius(radius),
+            : selectedColor(selectedColor), hoverColor(hoverColor), radius(radius),
               QStyledItemDelegate(parent) {}
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
