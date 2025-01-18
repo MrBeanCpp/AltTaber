@@ -13,6 +13,7 @@
 #include <QWheelEvent>
 #include <QTimer>
 #include <QMetaEnum>
+#include "utils/SystemTray.h"
 #include "utils/ConfigManager.h"
 
 Widget::Widget(QWidget* parent) :
@@ -28,8 +29,7 @@ Widget::Widget(QWidget* parent) :
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
-    sysTray = new SystemTray(this);
-    sysTray->show();
+    sysTray.show();
 
     lw->setViewMode(QListView::IconMode);
     lw->setMovement(QListView::Static);
@@ -273,7 +273,7 @@ bool Widget::prepareListWidget() {
         }
         if (!screen) {
             qWarning() << "Screen nullptr!";
-            sysTray->showMessage("Error", "Screen nullptr!");
+            sysTray.showMessage("Error", "Screen nullptr!");
             return false;
         }
 

@@ -9,15 +9,25 @@
 #include "Startup.h"
 #include "ConfigManager.h"
 
+#define sysTray SystemTray::instance()
+
 class SystemTray : public QSystemTrayIcon {
 public:
-    explicit SystemTray(QWidget* parent = nullptr) {
+    SystemTray(const SystemTray&) = delete;
+    SystemTray& operator=(const SystemTray&) = delete;
+
+    static SystemTray& instance() { // 第一次调用时 才会构造
+        static SystemTray instance;
+        return instance;
+    }
+
+private:
+    explicit SystemTray(QWidget* parent = nullptr) : QSystemTrayIcon(parent) {
         setIcon(QIcon(":/img/icon.ico"));
         setMenu(parent);
         setToolTip("AltTaber");
     }
 
-private:
     void setMenu(QWidget* parent = nullptr) {
         auto* menu = new QMenu(parent);
         menu->setStyleSheet("QMenu{"
