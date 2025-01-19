@@ -36,9 +36,18 @@ private:
                             "border:1px solid black;"
                             "}"
                             "QMenu:selected{ background-color:rgb(60,60,60); }");
+
+        auto* act_settings = new QAction("Settings", menu);
         auto* act_startup = new QAction("Start with Windows", menu);
         auto* menu_monitor = new QMenu("Display Monitor", menu);
         auto* act_quit = new QAction("Quit >", menu);
+
+        connect(act_settings, &QAction::triggered, this, [] {
+            cfg.editConfigFile();
+        });
+        connect(&cfg, &ConfigManager::configEdited, this, [this] {
+            this->showMessage("Config Edited", "auto reloaded");
+        });
 
         act_startup->setCheckable(true);
         act_startup->setChecked(Startup::isOn());
@@ -57,8 +66,14 @@ private:
                 act->setCheckable(true);
 
             Q_ASSERT(actions.size() == DisplayMonitor::EnumCount);
-            actions[cfg.getDisplayMonitor()]->setChecked(true);
             menu_monitor->addActions(actions);
+
+            // 动态响应配置文件修改
+            connect(menu_monitor, &QMenu::aboutToShow, this, [monitorGroup] {
+                qDebug() << "menu_monitor aboutToShow";
+                const auto actions = monitorGroup->actions();
+                actions[cfg.getDisplayMonitor()]->setChecked(true);
+            });
 
             connect(monitorGroup, &QActionGroup::triggered, this, [this](QAction* act) {
                 DisplayMonitor monitor = (DisplayMonitor) act->data().toInt();
@@ -69,6 +84,7 @@ private:
 
         connect(act_quit, &QAction::triggered, qApp, &QApplication::quit);
 
+        menu->addAction(act_settings);
         menu->addAction(act_startup);
         menu->addMenu(menu_monitor);
         menu->addAction(act_quit);
