@@ -8,6 +8,7 @@
 #include <QActionGroup>
 #include "Startup.h"
 #include "ConfigManager.h"
+#include "UpdateDialog.h"
 
 #define sysTray SystemTray::instance()
 
@@ -16,7 +17,8 @@ public:
     SystemTray(const SystemTray&) = delete;
     SystemTray& operator=(const SystemTray&) = delete;
 
-    static SystemTray& instance() { // 第一次调用时 才会构造
+    static SystemTray& instance() {
+        // 第一次调用时 才会构造
         static SystemTray instance;
         return instance;
     }
@@ -31,16 +33,22 @@ private:
     void setMenu(QWidget* parent = nullptr) {
         auto* menu = new QMenu(parent);
         menu->setStyleSheet("QMenu{"
-                            "background-color:rgb(45,45,45);"
-                            "color:rgb(220,220,220);"
-                            "border:1px solid black;"
-                            "}"
-                            "QMenu:selected{ background-color:rgb(60,60,60); }");
+            "background-color:rgb(45,45,45);"
+            "color:rgb(220,220,220);"
+            "border:1px solid black;"
+            "}"
+            "QMenu:selected{ background-color:rgb(60,60,60); }");
 
+        auto* act_update = new QAction("Check for Updates", menu);
         auto* act_settings = new QAction("Settings", menu);
         auto* act_startup = new QAction("Start with Windows", menu);
         auto* menu_monitor = new QMenu("Display Monitor", menu);
         auto* act_quit = new QAction("Quit >", menu);
+
+        connect(act_update, &QAction::triggered, this, [] {
+            static UpdateDialog dlg;
+            dlg.show();
+        });
 
         connect(act_settings, &QAction::triggered, this, [] {
             cfg.editConfigFile();
@@ -54,9 +62,8 @@ private:
         connect(act_startup, &QAction::toggled, this, [this](bool checked) {
             Startup::toggle();
             this->showMessage("auto Startup mode", checked ? "ON √" : "OFF ×");
-        });
-
-        { // menu_monitor
+        }); {
+            // menu_monitor
             auto* monitorGroup = new QActionGroup(menu_monitor);
             monitorGroup->addAction("Primary Monitor")->setData(PrimaryMonitor);
             monitorGroup->addAction("Mouse Monitor")->setData(MouseMonitor);
@@ -84,6 +91,7 @@ private:
 
         connect(act_quit, &QAction::triggered, qApp, &QApplication::quit);
 
+        menu->addAction(act_update);
         menu->addAction(act_settings);
         menu->addAction(act_startup);
         menu->addMenu(menu_monitor);

@@ -2,7 +2,8 @@
 #include <windows.h>
 #include <QTimer>
 #include <QMessageBox>
-#include "../header/widget.h"
+#include <QStyleHints>
+#include "widget.h"
 #include "utils/winEventHook.h"
 #include "utils/Util.h"
 #include "utils/TaskbarWheelHooker.h"
@@ -23,6 +24,9 @@ int main(int argc, char* argv[]) {
     ComInitializer com; // 初始化COM组件 for 主线程
     qDebug() << qt_error_string(S_OK); // just for fun
 
+    // 默认情况下，会根据系统主题自动切换; 但是一旦自定义qss，自动切换就会失效; 只好固定为Dark/Light
+    QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+    qApp->setQuitOnLastWindowClosed(false);
     auto* winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)
 

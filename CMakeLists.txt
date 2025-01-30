@@ -35,6 +35,7 @@ find_package(Qt6 COMPONENTS
         Gui
         Widgets
         Xml
+        Network
         REQUIRED)
 
 add_executable(Win_Switcher src/main.cpp
@@ -66,12 +67,16 @@ add_executable(Win_Switcher src/main.cpp
         header/utils/Startup.h
         header/utils/SystemTray.h
         header/utils/ConfigManager.h
-        header/utils/ConfigManagerBase.h)
+        header/utils/ConfigManagerBase.h
+        src/UpdateDialog.cpp
+        header/UpdateDialog.h
+        ui/UpdateDialog.ui)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui
         Qt::Widgets
         Qt::Xml
+        Qt::Network
 )
 
 target_link_libraries(${PROJECT_NAME}
