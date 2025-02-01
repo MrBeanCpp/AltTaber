@@ -91,6 +91,10 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
 
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
         reply->deleteLater();
+        downloadStatus.reply = nullptr;
+        downloadStatus.file.close(); // close才刷新缓冲区，写入磁盘，所以必须在解压之前！不然解压概率性失败...(QZip: EndOfDirectory not found)
+        ui->progressBar->hide();
+        ui->btn_update->setEnabled(true);
         if (!downloadStatus.success || reply->error() != QNetworkReply::NoError) {
             qWarning() << "Download failed" << reply->errorString();
             ui->textBrowser->setMarkdown("## Download failed\n" + reply->errorString());
@@ -100,10 +104,6 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
             sysTray.showMessage("Download Status", "Success!");
             emit downloadSucceed(downloadStatus.file.fileName());
         }
-        downloadStatus.reply = nullptr;
-        downloadStatus.file.close();
-        ui->progressBar->hide();
-        ui->btn_update->setEnabled(true);
     });
 }
 
