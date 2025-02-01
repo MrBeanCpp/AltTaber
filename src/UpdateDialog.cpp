@@ -28,6 +28,7 @@ UpdateDialog::UpdateDialog(QWidget* parent) : QDialog(parent), ui(new Ui::Update
 
 UpdateDialog::~UpdateDialog() {
     delete ui;
+    qDebug() << "UpdateDialog destroyed";
 }
 
 void UpdateDialog::fetchGithubReleaseInfo() {

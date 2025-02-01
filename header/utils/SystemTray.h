@@ -46,8 +46,11 @@ private:
         auto* act_quit = new QAction("Quit >", menu);
 
         connect(act_update, &QAction::triggered, this, [] {
-            static UpdateDialog dlg;
-            dlg.show();
+            // !对于UI窗体，不要用static变量(`static UpdateDialog dlg;`)，要么局部变量，要么指针
+            // ! static局部变量会在程序结束时析构 ! 析构时可能访问qApp资源，而qApp由于`qApp->quit()`已经被清理
+            // !导致报错（"No style available without QApplication!"）
+            static auto* dlg = new UpdateDialog;
+            dlg->show();
         });
 
         connect(act_settings, &QAction::triggered, this, [] {
