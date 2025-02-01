@@ -12,9 +12,18 @@
 UpdateDialog::UpdateDialog(QWidget* parent) : QDialog(parent), ui(new Ui::UpdateDialog) {
     ui->setupUi(this);
     setWindowFlag(Qt::WindowStaysOnTopHint);
-    setWindowTitle("AltTaber Updater");
+    setWindowTitle("AltTaber Updater[GitHub]");
     qDebug() << QSslSocket::sslLibraryBuildVersionString() << QSslSocket::supportsSsl();
+
     connect(ui->btn_recheck, &QPushButton::clicked, this, &UpdateDialog::fetchGithubReleaseInfo);
+    connect(ui->btn_update, &QPushButton::clicked, this, [this] {
+        ui->btn_update->setEnabled(false);
+        auto url = relInfo.downloadUrl;
+        download(url, qApp->applicationDirPath() + "/" + QUrl(url).fileName());
+    });
+    connect(this, &UpdateDialog::downloadSucceed, this, [this](const QString& filePath) {
+        qDebug() << "Download succeed" << filePath;
+    });
 }
 
 UpdateDialog::~UpdateDialog() {
@@ -55,6 +64,48 @@ void UpdateDialog::fetchGithubReleaseInfo() {
     });
 }
 
+void UpdateDialog::download(const QString& url, const QString& savePath) {
+    QNetworkRequest request(url);
+    auto* reply = manager.get(request);
+    ui->progressBar->show();
+    ui->progressBar->setValue(0);
+
+    QFile::remove(savePath);
+    downloadStatus.file.setFileName(savePath);
+    downloadStatus.file.open(QIODevice::WriteOnly | QIODevice::Append);
+    downloadStatus.success = false;
+    downloadStatus.reply = reply;
+
+    connect(reply, &QNetworkReply::readyRead, this, [this, reply] {
+        downloadStatus.file.write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::downloadProgress, this, [this](qint64 bytesReceived, qint64 bytesTotal) {
+        if (bytesReceived == bytesTotal)
+            downloadStatus.success = true;
+
+        ui->progressBar->setMaximum(bytesTotal);
+        ui->progressBar->setValue(bytesReceived);
+    });
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        if (!downloadStatus.success || reply->error() != QNetworkReply::NoError) {
+            qWarning() << "Download failed" << reply->errorString();
+            ui->textBrowser->setMarkdown("## Download failed\n" + reply->errorString());
+            sysTray.showMessage("Download failed", reply->errorString());
+        } else {
+            ui->textBrowser->setMarkdown("## Download success✅");
+            sysTray.showMessage("Download Status", "Success!");
+            emit downloadSucceed(downloadStatus.file.fileName());
+        }
+        downloadStatus.reply = nullptr;
+        downloadStatus.file.close();
+        ui->progressBar->hide();
+        ui->btn_update->setEnabled(true);
+    });
+}
+
 QVersionNumber UpdateDialog::normalizeVersion(const QString& ver) {
     auto v = ver;
     if (v.startsWith('v')) v.removeFirst();
@@ -69,5 +120,6 @@ QString UpdateDialog::toLocalTime(const QString& isoTime) {
 }
 
 void UpdateDialog::showEvent(QShowEvent*) {
+    ui->progressBar->hide();
     fetchGithubReleaseInfo();
 }

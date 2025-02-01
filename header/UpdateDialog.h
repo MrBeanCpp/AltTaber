@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QDialog>
+#include <QFile>
 #include <QNetworkAccessManager>
 #include <QVersionNumber>
 
@@ -23,8 +24,12 @@ public:
 
 private:
     void fetchGithubReleaseInfo();
+    void download(const QString& url, const QString& savePath);
     static QVersionNumber normalizeVersion(const QString& ver);
     static QString toLocalTime(const QString& isoTime);
+
+signals:
+    void downloadSucceed(const QString& filePath);
 
 protected:
     void showEvent(QShowEvent*) override;
@@ -42,6 +47,12 @@ private:
         QString downloadUrl;
         QString publishTime;
     } relInfo;
+
+    struct {
+        bool success = false;
+        QNetworkReply* reply = nullptr;
+        QFile file;
+    } downloadStatus;
 };
 
 
