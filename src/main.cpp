@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     qDebug() << qt_error_string(S_OK); // just for fun
 
     // 默认情况下，会根据系统主题自动切换; 但是一旦自定义qss，自动切换就会失效; 只好固定为Dark/Light
-    QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+    QApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
     qApp->setQuitOnLastWindowClosed(false);
     auto* winSwitcher = new Widget;
     winSwitcher->prepareListWidget(); // 优化：对ListWidget进行预先初始化，首次执行`setCurrentRow`特别耗时(472ms)

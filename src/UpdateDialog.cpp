@@ -7,7 +7,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QDesktopServices>
 #include "utils/SystemTray.h"
+#include "QtCore/private/qzipreader_p.h"
 
 UpdateDialog::UpdateDialog(QWidget* parent) : QDialog(parent), ui(new Ui::UpdateDialog) {
     ui->setupUi(this);
@@ -15,14 +17,41 @@ UpdateDialog::UpdateDialog(QWidget* parent) : QDialog(parent), ui(new Ui::Update
     setWindowTitle("AltTaber Updater[GitHub]");
     qDebug() << QSslSocket::sslLibraryBuildVersionString() << QSslSocket::supportsSsl();
 
+    manager.setTransferTimeout(10000); // 10s -> Operation canceled
+    ui->progressBar->hide();
     connect(ui->btn_recheck, &QPushButton::clicked, this, &UpdateDialog::fetchGithubReleaseInfo);
     connect(ui->btn_update, &QPushButton::clicked, this, [this] {
         ui->btn_update->setEnabled(false);
         auto url = relInfo.downloadUrl;
-        download(url, qApp->applicationDirPath() + "/" + QUrl(url).fileName());
+        archive.fileName = QUrl(url).fileName();
+        download(url, qApp->applicationDirPath() + '/' + archive.fileName);
     });
     connect(this, &UpdateDialog::downloadSucceed, this, [this](const QString& filePath) {
         qDebug() << "Download succeed" << filePath;
+        if (filePath.endsWith(".zip")) {
+            auto relDir = QDir(qApp->applicationDirPath() + '/' + archive.extractDir);
+            relDir.removeRecursively();
+            if (QZipReader reader(filePath); reader.isReadable() &&
+                                             reader.extractAll(relDir.absolutePath()) &&
+                                             relDir.exists()) {
+                // extractAll 失败 貌似也会返回true (& status() == 0 NoError)？离谱
+                auto entryInfos = relDir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot);
+                if (entryInfos.size() == 1 && entryInfos.first().isDir()) { // 有可能还套了一层根目录
+                    relDir.cd(entryInfos.first().fileName());
+                }
+                qDebug() << "release extract dir:" << relDir.absolutePath();
+                const auto batPath = writeBat(relDir.absolutePath());
+                QDesktopServices::openUrl(QUrl::fromLocalFile(batPath));
+                qApp->quit(); //
+            } else {
+                qWarning() << "Extract failed" << reader.status();
+                ui->textBrowser->setMarkdown("## Extract failed❎");
+            }
+        } else {
+            // 其他格式可能需要7z.exe支持
+            qWarning() << "Unsupported file type" << filePath;
+            ui->textBrowser->setMarkdown("## Unsupported file type❎");
+        }
     });
 }
 
@@ -32,7 +61,7 @@ UpdateDialog::~UpdateDialog() {
 }
 
 void UpdateDialog::fetchGithubReleaseInfo() {
-    ui->textBrowser->setMarkdown(R"(## Fetching...)");
+    ui->textBrowser->setMarkdown("## Fetching...");
     const QString ApiUrl = QString("https://api.github.com/repos/%1/%2/releases/latest").arg(Owner, Repo);
     QNetworkRequest request(ApiUrl);
     auto* reply = manager.get(request);
@@ -40,6 +69,7 @@ void UpdateDialog::fetchGithubReleaseInfo() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
             qWarning() << "Failed to fetch update info" << reply->errorString();
+            ui->textBrowser->setMarkdown("## Failed to fetch update info❎\n" + reply->errorString());
             sysTray.showMessage("Failed to fetch update info", reply->errorString());
             return;
         }
@@ -70,10 +100,11 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
     auto* reply = manager.get(request);
     ui->progressBar->show();
     ui->progressBar->setValue(0);
+    ui->progressBar->setMaximum(0); // unknown size
 
     QFile::remove(savePath);
     downloadStatus.file.setFileName(savePath);
-    downloadStatus.file.open(QIODevice::WriteOnly | QIODevice::Append);
+    downloadStatus.file.open(QIODevice::WriteOnly);
     downloadStatus.success = false;
     downloadStatus.reply = reply;
 
@@ -82,6 +113,7 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
     });
 
     connect(reply, &QNetworkReply::downloadProgress, this, [this](qint64 bytesReceived, qint64 bytesTotal) {
+        qDebug() << "Download progress" << bytesReceived << bytesTotal;
         if (bytesReceived == bytesTotal)
             downloadStatus.success = true;
 
@@ -97,7 +129,7 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
         ui->btn_update->setEnabled(true);
         if (!downloadStatus.success || reply->error() != QNetworkReply::NoError) {
             qWarning() << "Download failed" << reply->errorString();
-            ui->textBrowser->setMarkdown("## Download failed\n" + reply->errorString());
+            ui->textBrowser->setMarkdown("## Download failed❎ [" + reply->url().host() + "]\n" + reply->errorString());
             sysTray.showMessage("Download failed", reply->errorString());
         } else {
             ui->textBrowser->setMarkdown("## Download success✅");
@@ -105,6 +137,26 @@ void UpdateDialog::download(const QString& url, const QString& savePath) {
             emit downloadSucceed(downloadStatus.file.fileName());
         }
     });
+}
+
+QString UpdateDialog::writeBat(const QString& sourceDir, const QString& targetDir) const {
+    QFile file(qApp->applicationDirPath() + "/copy.bat");
+    if (file.open(QFile::WriteOnly | QFile::Text)) {
+        QTextStream text(&file);
+        text << "@timeout /t 1 /NOBREAK" << '\n';
+        text << "@cd /d %~dp0" << '\n'; //切换到bat目录，否则为qt的exe目录
+        text << "@echo ##Copying files, please wait......\n";
+        text << QString("xcopy \"%1\" \"%2\" /E /H /Y\n").arg(QDir::toNativeSeparators(sourceDir)).arg(QDir::toNativeSeparators(targetDir));
+        text << "@echo -------------------------------------------------------\n";
+        text << "@echo ##Update SUCCESSFUL(Maybe)\n";
+        text << "@echo -------------------------------------------------------\n";
+        // text << "@pause\n";
+        text << QString("@del \"%1\"\n").arg(archive.fileName);
+        text << QString("@rd /S /Q \"%1\"\n").arg(archive.extractDir);
+        text << QString("@start \"\" \"%1\"\n").arg(QFile(qApp->applicationFilePath()).fileName());
+        text << "@del %0";
+    }
+    return file.fileName();
 }
 
 QVersionNumber UpdateDialog::normalizeVersion(const QString& ver) {
@@ -121,6 +173,6 @@ QString UpdateDialog::toLocalTime(const QString& isoTime) {
 }
 
 void UpdateDialog::showEvent(QShowEvent*) {
-    ui->progressBar->hide();
-    fetchGithubReleaseInfo();
+    if (!downloadStatus.reply)
+        fetchGithubReleaseInfo();
 }
