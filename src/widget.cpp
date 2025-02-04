@@ -16,8 +16,7 @@
 #include "utils/SystemTray.h"
 #include "utils/ConfigManager.h"
 
-Widget::Widget(QWidget* parent) :
-        QWidget(parent), ui(new Ui::Widget) {
+Widget::Widget(QWidget* parent) : QWidget(parent), ui(new Ui::Widget) {
     ui->setupUi(this);
     lw = ui->listWidget;
     setWindowFlag(Qt::WindowStaysOnTopHint);
@@ -76,10 +75,10 @@ void Widget::keyPressEvent(QKeyEvent* event) {
     auto key = event->key();
     auto modifiers = event->modifiers();
     static const QHash<int, int> VimArrows = {
-            {Qt::Key_K, Qt::Key_Up},    // ↑
-            {Qt::Key_J, Qt::Key_Down},  // ↓
-            {Qt::Key_H, Qt::Key_Left},  // ←
-            {Qt::Key_L, Qt::Key_Right}, // →
+        {Qt::Key_K, Qt::Key_Up},    // ↑
+        {Qt::Key_J, Qt::Key_Down},  // ↓
+        {Qt::Key_H, Qt::Key_Left},  // ←
+        {Qt::Key_L, Qt::Key_Right}, // →
     };
     if (key == Qt::Key_Tab) { // switch to next or prev
         auto i = lw->currentRow();
@@ -187,7 +186,7 @@ void Widget::keyReleaseEvent(QKeyEvent* event) {
 void Widget::paintEvent(QPaintEvent*) { //不绘制会导致鼠标穿透背景
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen);//取消边框//pen决定边框颜色
+    painter.setPen(Qt::NoPen); //取消边框//pen决定边框颜色
     painter.setBrush(QColor(25, 25, 25, 100));
     painter.drawRect(rect());
 }
@@ -206,7 +205,7 @@ void Widget::notifyForegroundChanged(HWND hwnd, ForegroundChangeSource source) {
 
     auto sourceStr = QMetaEnum::fromType<ForegroundChangeSource>().valueToKey(source);
     qDebug() << qUtf8Printable(QString("*ForeWin changed (%1):").arg(sourceStr)) // qUtf8Printable removes quotes ""
-             << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
+            << Util::getWindowTitle(hwnd) << Util::getClassName(hwnd) << path << Util::getFileDescription(path);
 } // TODO 控制面板 和 资源管理器 exe是同一个，如何区分图标
 
 /// collect, filter, sort Windows for presentation
@@ -518,7 +517,8 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
             if (HWND thumbnail = Util::getCurrentTaskListThumbnailWnd(); IsWindowVisible(thumbnail)) {
                 qDebug() << "(Taskbar)#Press LButton";
                 mouseEvent(MOUSEEVENTF_LEFTDOWN);
-                QTimer::singleShot(20, this, [hwnd]() { // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
+                // 由于本程序hook了mouse，所以必须处理全局鼠标事件（in事件循环）
+                QTimer::singleShot(20, this, [hwnd]() {
                     Util::switchToWindow(hwnd, true); // TODO thumbnail隐藏之前 不要switch，并且block滚轮 防止闪烁卡顿
                 });
             } else
@@ -528,14 +528,16 @@ void Widget::rotateTaskbarWindowInGroup(const QString& exePath, bool forward, in
                 auto* timer = new QTimer;
                 timer->setSingleShot(true);
                 timer->setInterval(200);
-                timer->callOnTimeout(this, [this]() { // TODO cursor移动后立即释放 防止拖拽
+                // TODO cursor移动后立即释放 防止拖拽
+                timer->callOnTimeout(this, [this]() {
                     mouseEvent(MOUSEEVENTF_LEFTUP);
                     qDebug() << "(Taskbar)#Release LButton";
 
                     // 鼠标点击thumbnail之后，其获取焦点，此时若焦点在其窗口组成员中，thumbnail就不会隐藏，这是Windows机制
                     // 只能通过将焦点转移到Taskbar使其隐藏
                     // 直接 HIDE thumbnail 不太行，会导致之后restore窗口时 thumbnail刷新 + 窗口闪烁，闪瞎了
-                    QTimer::singleShot(100, this, []() { // 50ms 等待thumbnail显示
+                    QTimer::singleShot(100, this, []() {
+                        // 等待thumbnail显示
                         if (HWND thumbnail = Util::getCurrentTaskListThumbnailWnd(); IsWindowVisible(thumbnail)) {
                             if (HWND taskbar = FindWindow(L"Shell_TrayWnd", nullptr))
                                 Util::switchToWindow(taskbar, true);

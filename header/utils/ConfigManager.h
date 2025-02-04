@@ -16,6 +16,7 @@ enum DisplayMonitor {
 
 class ConfigManager : public ConfigManagerBase {
     inline static const QString FileName = "config.ini";
+
 public:
     ConfigManager(const ConfigManager&) = delete;
     ConfigManager& operator=(const ConfigManager&) = delete;
@@ -42,7 +43,6 @@ public:
 
 private:
     explicit ConfigManager(const QString& filename) : ConfigManagerBase(filename) {}
-
 };
 
 

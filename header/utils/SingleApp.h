@@ -31,7 +31,7 @@ public:
             return false;
         } else {
             qWarning() << "fatal: SharedMemory create failed" << sharedMemory.errorString();
-            return true;  // 保守起见，认为已有实例在运行
+            return true; // 保守起见，认为已有实例在运行
         }
     }
 };

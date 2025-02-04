@@ -7,6 +7,7 @@
 #include <QDebug>
 
 struct WindowGroup;
+
 struct WindowInfo {
     QString title;
     QString className;
@@ -35,11 +36,15 @@ struct WindowGroup {
 Q_DECLARE_METATYPE(WindowGroup) // for QVariant
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class Widget; }
+
+namespace Ui {
+    class Widget;
+}
+
 QT_END_NAMESPACE
 
 class Widget : public QWidget {
-Q_OBJECT
+    Q_OBJECT
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
@@ -55,7 +60,7 @@ public:
     Q_ENUM(ForegroundChangeSource) // for QMetaEnum, to QString
 
 public:
-    explicit Widget(QWidget* cur = nullptr);
+    explicit Widget(QWidget* parent = nullptr);
     QList<WindowGroup> prepareWindowGroupList();
     bool prepareListWidget();
     Q_INVOKABLE bool requestShow();

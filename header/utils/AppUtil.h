@@ -2,7 +2,6 @@
 #define WIN_SWITCHER_APPUTIL_H
 
 #include <Windows.h>
-#include <QString>
 #include <QIcon>
 
 namespace AppUtil {

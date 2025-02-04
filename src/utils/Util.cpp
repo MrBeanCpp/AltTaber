@@ -196,19 +196,19 @@ namespace Util {
     /// 在窗口创建过程中，会触发 EVENT_SYSTEM_FOREGROUND，但是这瞬间 IsWindowVisible 为false
     bool isWindowAcceptable(HWND hwnd, bool skipVisibleCheck) {
         static const QStringList BlackList_ClassName = {
-                "Progman",
-                "Windows.UI.Core.CoreWindow", // 过滤UWP Core，从Frame入手
-                "CEF-OSC-WIDGET",
-                "WorkerW", // explorer.exe
-                "Shell_TrayWnd" // explorer.exe
+            "Progman",
+            "Windows.UI.Core.CoreWindow", // 过滤UWP Core，从Frame入手
+            "CEF-OSC-WIDGET",
+            "WorkerW", // explorer.exe
+            "Shell_TrayWnd" // explorer.exe
         };
         static const QStringList BlackList_ExePath = {
-                R"(C:\Windows\System32\wscript.exe)"
+            R"(C:\Windows\System32\wscript.exe)"
         };
         static const QStringList BlackList_FileName = { // TODO by user from config
-                "Nahimic3.exe",
-                "Follower.exe",
-                "QQ Follower.exe"
+            "Nahimic3.exe",
+            "Follower.exe",
+            "QQ Follower.exe"
         };
         LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         QString className;
@@ -222,7 +222,7 @@ namespace Util {
             && (className = getClassName(hwnd)).size() > 0 // cache
             && !BlackList_ClassName.contains(className)
             && !className.startsWith("imestatuspop_classname{") // 输入法（的推销弹窗）https://s3.bmp.ovh/imgs/2024/12/23/bb136fde101a41ce.png
-                ) {
+        ) {
             auto path = getWindowProcessPath(hwnd); // 耗时操作，减少次数
             if (!BlackList_ExePath.contains(path) && !BlackList_FileName.contains(QFileInfo(path).fileName()))
                 return true;

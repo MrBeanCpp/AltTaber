@@ -11,13 +11,14 @@ class IconOnlyDelegate : public QStyledItemDelegate {
     QColor selectedColor;
     QColor hoverColor;
     int radius;
+
 public:
     explicit IconOnlyDelegate(QObject* parent = nullptr,
                               QColor selectedColor = QColor(80, 80, 80, 200),
                               QColor hoverColor = QColor(50, 50, 50, 100),
                               int radius = 8)
-            : selectedColor(selectedColor), hoverColor(hoverColor), radius(radius),
-              QStyledItemDelegate(parent) {}
+        : QStyledItemDelegate(parent), selectedColor(selectedColor), hoverColor(hoverColor),
+          radius(radius) {}
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 };

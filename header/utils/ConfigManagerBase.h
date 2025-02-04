@@ -5,11 +5,12 @@
 #include <QProcess>
 
 class ConfigManagerBase : public QObject {
-Q_OBJECT
+    Q_OBJECT
 
 protected:
     QSettings settings;
     QProcess proc_editor;
+
 public:
     ConfigManagerBase(const ConfigManagerBase&) = delete;
     ConfigManagerBase& operator=(const ConfigManagerBase&) = delete;

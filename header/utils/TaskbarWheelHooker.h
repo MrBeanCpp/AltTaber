@@ -5,7 +5,8 @@
 #include <Windows.h>
 
 class TaskbarWheelHooker : public QObject {
-Q_OBJECT
+    Q_OBJECT
+
 public:
     TaskbarWheelHooker();
     ~TaskbarWheelHooker() override;

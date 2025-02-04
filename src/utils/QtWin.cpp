@@ -4,7 +4,6 @@
 #include <QtDebug>
 
 namespace QtWin {
-
     /// internal
     ITaskbarList3* qt_createITaskbarList3() { // 每个线程统一进行COM初始化，不在特定函数中进行
         ITaskbarList3* pTbList = nullptr;
@@ -31,5 +30,4 @@ namespace QtWin {
     QPixmap fromHICON(HICON icon) {
         return QPixmap::fromImage(QImage::fromHICON(icon));
     }
-
 } // QtWin

@@ -14,6 +14,7 @@ class UIElement; // forward declaration
 class UIAutomation final {
     UIAutomation() = delete;
     static bool init();
+
 public:
     static UIElement getElementUnderMouse();
     // 获取第一个有HWND的父元素
