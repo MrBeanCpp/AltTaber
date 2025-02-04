@@ -10,6 +10,7 @@
 #include "utils/KeyboardHooker.h"
 #include "utils/ComInitializer.h"
 #include "utils/SingleApp.h"
+#include "utils/SystemTray.h"
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
@@ -24,6 +25,7 @@ int main(int argc, char* argv[]) {
     ComInitializer com; // 初始化COM组件 for 主线程
     qDebug() << qt_error_string(S_OK); // just for fun
 
+    sysTray.show(); // show之后才能使用系统通知
     // 默认情况下，会根据系统主题自动切换; 但是一旦自定义qss，自动切换就会失效; 只好固定为Dark/Light
     QApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
     qApp->setQuitOnLastWindowClosed(false);

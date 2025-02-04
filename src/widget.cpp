@@ -29,8 +29,6 @@ Widget::Widget(QWidget* parent) :
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
-    sysTray.show();
-
     lw->setViewMode(QListView::IconMode);
     lw->setMovement(QListView::Static);
     lw->setFlow(QListView::LeftToRight);
