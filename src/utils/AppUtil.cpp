@@ -73,9 +73,9 @@ namespace AppUtil {
 
         static const QStringList LogoAttributes = {
 //                "Square150x150Logo", // 周围会被填充大量透明，导致图标很小
-                "Square44x44Logo",
-                "Square30x30Logo"
-                "SmallLogo"
+            "Square44x44Logo",
+            "Square30x30Logo",
+            "SmallLogo"
         };
 
         QDomElement root = doc.documentElement();
