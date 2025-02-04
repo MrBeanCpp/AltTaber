@@ -1,6 +1,7 @@
 ﻿// You may need to build the project (run Qt uic code generator) to get "ui_UpdateDialog.h" resolved
 
 #include "UpdateDialog.h"
+#include <QCommandLineParser>
 #include "ui_UpdateDialog.h"
 #include <QDebug>
 #include <QNetworkReply>
@@ -146,14 +147,15 @@ QString UpdateDialog::writeBat(const QString& sourceDir, const QString& targetDi
         text << "@timeout /t 1 /NOBREAK" << '\n';
         text << "@cd /d %~dp0" << '\n'; //切换到bat目录，否则为qt的exe目录
         text << "@echo ##Copying files, please wait......\n";
-        text << QString("xcopy \"%1\" \"%2\" /E /H /Y\n").arg(QDir::toNativeSeparators(sourceDir)).arg(QDir::toNativeSeparators(targetDir));
+        text << QString("xcopy \"%1\" \"%2\" /E /H /Y\n").arg(QDir::toNativeSeparators(sourceDir), QDir::toNativeSeparators(targetDir));
         text << "@echo -------------------------------------------------------\n";
         text << "@echo ##Update SUCCESSFUL(Maybe)\n";
         text << "@echo -------------------------------------------------------\n";
         // text << "@pause\n";
         text << QString("@del \"%1\"\n").arg(archive.fileName);
         text << QString("@rd /S /Q \"%1\"\n").arg(archive.extractDir);
-        text << QString("@start \"\" \"%1\"\n").arg(QFile(qApp->applicationFilePath()).fileName());
+        text << QString("@start \"\" \"%1\" --verify-update \"%2->%3\"\n").arg(QFile(qApp->applicationFilePath()).fileName())
+                                                                          .arg(version.toString(), relInfo.ver.toString());
         text << "@del %0";
     }
     return file.fileName();
@@ -170,6 +172,37 @@ QVersionNumber UpdateDialog::normalizeVersion(const QString& ver) {
 QString UpdateDialog::toLocalTime(const QString& isoTime) {
     const auto dateTime = QDateTime::fromString(isoTime, Qt::ISODate);
     return dateTime.toLocalTime().toString("yyyy.MM.dd HH:mm");
+}
+
+void UpdateDialog::verifyUpdate(const QCoreApplication& app) {
+    QCommandLineParser parser;
+    // 用于验证更新成功与否，应由更新程序(.bat)调用，用法：`--verify-update 1.0->2.0`
+    QCommandLineOption versionUpdate("verify-update", "verify update, e.g. `1.0->2.0`", "versionChange");
+    // the `valueName` needs to be set if the option expects a value.
+    parser.addOption(versionUpdate);
+    parser.process(app);
+    if (parser.isSet(versionUpdate)) {
+        // Qt 好像不支持`-v 1.0.1 1.0.2`这样多values，只能`-v 1.0.1 -v 1.0.2`
+        auto versions = parser.value(versionUpdate).split("->");
+        if (versions.size() == 2) {
+            auto vFrom = QVersionNumber::fromString(versions.first());
+            auto vTo = QVersionNumber::fromString(versions.last());
+            qDebug() << "vFrom" << vFrom << "vTo" << vTo << "compare" << QVersionNumber::compare(vFrom, vTo);
+
+            auto vCur = QVersionNumber::fromString(QCoreApplication::applicationVersion());
+            if (vCur.normalized() == vTo.normalized()) {
+                qDebug() << "Update success";
+                sysTray.showMessage("Verify Update", "Update Success to v" + vTo.toString());
+            } else if (vCur.normalized() == vFrom.normalized()) {
+                qWarning() << "Update failed, version not change" << vFrom << vTo << vCur;
+                sysTray.showMessage("Verify Update", "Update failed, version not change", QSystemTrayIcon::Critical);
+            } else {
+                qWarning() << "Update may failed, version changed but not to target" << vFrom << vTo << vCur;
+                sysTray.showMessage("Verify Update", "Update may failed, version changed but not to target", QSystemTrayIcon::Warning);
+            }
+        } else
+            qWarning() << "Invalid version change" << parser.value(versionUpdate);
+    }
 }
 
 void UpdateDialog::showEvent(QShowEvent*) {

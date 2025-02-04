@@ -21,6 +21,7 @@ class UpdateDialog final : public QDialog {
 public:
     explicit UpdateDialog(QWidget* parent = nullptr);
     ~UpdateDialog() override;
+    static void verifyUpdate(const QCoreApplication& app);
 
 private:
     void fetchGithubReleaseInfo();
