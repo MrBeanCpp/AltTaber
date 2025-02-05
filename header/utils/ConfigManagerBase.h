@@ -41,6 +41,13 @@ public:
             return;
         }
 
+        QFile file(settings.fileName());
+        if (!file.exists()) { // ensure exists
+            qDebug() << "#Creating config file" << settings.fileName();
+            file.open(QIODevice::WriteOnly);
+            file.close();
+        }
+
         qDebug() << "#Editing config file" << settings.fileName();
         // QProcess 只能同时连接一个进程
         proc_editor.start("notepad", {settings.fileName()});
