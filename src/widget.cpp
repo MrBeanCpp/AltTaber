@@ -28,6 +28,8 @@ Widget::Widget(QWidget* parent) : QWidget(parent), ui(new Ui::Widget) {
     Util::setWindowRoundCorner(this->hWnd()); // 设置窗口圆角
     setWindowBlur(hWnd()); // 设置窗口模糊, 必须配合Qt::WA_TranslucentBackground
 
+    setupLabelFont();
+
     lw->setViewMode(QListView::IconMode);
     lw->setMovement(QListView::Static);
     lw->setFlow(QListView::LeftToRight);
@@ -154,6 +156,25 @@ void Widget::showLabelForItem(QListWidgetItem* item, QString text) {
     labelRect.moveLeft(qMax(labelRect.left(), bound.left())); // left align
 
     ui->label->move(labelRect.topLeft());
+}
+
+void Widget::setupLabelFont() {
+    static auto reloadLabelFontCfg = [this] {
+        const QStringList Fonts = {"Microsoft YaHei UI", "Microsoft YaHei", "Consolas"}; // fallback
+        auto labelFont = ui->label->font();
+        labelFont.setPointSize(cfg.get("label/font_size", 10).toInt());
+        auto defaultFF = QStringList{cfg.get("label/font_family", Fonts[0]).toString()};
+        labelFont.setFamilies(defaultFF << Fonts.mid(1));
+        ui->label->setFont(labelFont);
+        qDebug() << labelFont.families();
+        qDebug() << "Label Font:" << QFontInfo(labelFont).family();
+    };
+    reloadLabelFontCfg();
+
+    // auto reload
+    connect(&cfg, &ConfigManager::configEdited, this, [] {
+        reloadLabelFontCfg();
+    });
 }
 
 void Widget::keyReleaseEvent(QKeyEvent* event) {

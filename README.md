@@ -78,6 +78,24 @@
 - [ ] 自定义配置
 - [ ] ...
 
+## ⚙配置
+
+配置保存在`config.ini`文件中，有两种方式可以修改配置：
+
+1. 直接修改程序目录下的`config.ini`文件，并重启程序
+2. 🌟\[推荐\] 使用托盘菜单（右键托盘图标）中的`Settings`选项，此时会自动用`notepad`打开配置文件；
+   修改后，保存并**关闭文件**，程序会自动重载配置
+
+### 配置项
+
+#### 字体
+
+```ini
+[label]
+font_family = "Microsoft YaHei UI"
+font_size = 10
+```
+
 ## 🧐Reference
 
 - [window-switcher](https://github.com/sigoden/window-switcher)

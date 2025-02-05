@@ -39,8 +39,7 @@
     </rect>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: rgb(240, 240, 240);
-font: 10pt &quot;微软雅黑&quot;;</string>
+    <string notr="true">color: rgb(240, 240, 240);</string>
    </property>
    <property name="text">
     <string>TextLabel</string>
