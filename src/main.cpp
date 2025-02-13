@@ -68,6 +68,10 @@ int main(int argc, char* argv[]) {
                 qDebug() << "任务切换 detected!";
                 int t = 0;
                 do {
+                    // 等待Windows的任务切换窗口完全获取焦点（显示），再弹出本程序抢夺焦点，否则可能会被抢回去，导致需要retry
+                    // retry会导致一个问题：（VMWare中）Alt+Tab唤出AltTaber导致retry后，AltTaber显示时会同时显示Windows中的最后一个焦点窗口（例如资源管理器）
+                    // ！但是，这个问题只有在Release模式+管理员权限下才会出现，Debug模式下不会出现，离谱
+                    Sleep(10);
                     // 貌似如果不是本进程第一个窗口的话，这招无法前置，比如你在这里new Widget
                     winSwitcher->requestShow();
                     t++;
