@@ -11,7 +11,7 @@ list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS ui) # 如果.ui文件不在.cpp同一目�
 # 设置版本信息变量
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 4)
-set(VERSION_PATCH 0)
+set(VERSION_PATCH 1)
 
 set(COMPANY_NAME "MrBeanCpp")
 set(FILE_DESCRIPTION "AltTaber - Window Switcher")
@@ -70,7 +70,9 @@ add_executable(Win_Switcher src/main.cpp
         header/utils/ConfigManagerBase.h
         src/UpdateDialog.cpp
         header/UpdateDialog.h
-        ui/UpdateDialog.ui)
+        ui/UpdateDialog.ui
+        src/utils/ScheduledTask.cpp
+        header/utils/ScheduledTask.h)
 target_link_libraries(Win_Switcher
         Qt::Core
         Qt::Gui

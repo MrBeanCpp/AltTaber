@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     ComInitializer com; // 初始化COM组件 for 主线程
     qDebug() << qt_error_string(S_OK); // just for fun
 
+    qDebug() << "isUserAdmin" << IsUserAnAdmin();
     sysTray.show(); // show之后才能使用系统通知
     UpdateDialog::verifyUpdate(a); // 验证更新
 

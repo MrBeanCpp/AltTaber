@@ -167,7 +167,7 @@ void Widget::setupLabelFont() {
         labelFont.setFamilies(defaultFF << Fonts.mid(1));
         ui->label->setFont(labelFont);
         qDebug() << labelFont.families();
-        qDebug() << "Label Font:" << QFontInfo(labelFont).family();
+        qDebug() << "Label Actual Font:" << QFontInfo(labelFont).family();
     };
     reloadLabelFontCfg();
 

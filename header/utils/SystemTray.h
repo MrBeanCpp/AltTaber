@@ -27,7 +27,7 @@ private:
     explicit SystemTray(QWidget* parent = nullptr) : QSystemTrayIcon(parent) {
         setIcon(QIcon(":/img/icon.ico"));
         setMenu(parent);
-        setToolTip("AltTaber");
+        setToolTip(IsUserAnAdmin() ? "AltTaber (admin)" : "AltTaber");
     }
 
     void setMenu(QWidget* parent = nullptr) {
@@ -61,12 +61,27 @@ private:
         });
 
         act_startup->setCheckable(true);
-        act_startup->setChecked(Startup::isOn());
-        connect(act_startup, &QAction::toggled, this, [this](bool checked) {
+        // triggered vs toggled: setChecked() will emit `toggled`, but not `triggered` (which is pure user action)
+        connect(act_startup, &QAction::triggered, this, [this](bool checked) {
             Startup::toggle();
-            this->showMessage("auto Startup mode", checked ? "ON √" : "OFF ×");
-        }); {
-            // menu_monitor
+            if (Startup::isOn() == checked)
+                this->showMessage("auto Startup mode", checked ? "ON √" : "OFF ×");
+            else
+                this->showMessage("Action Failed", "Failed to change Startup mode", Warning);
+        });
+        // aboutToShow 时查询，反映真实状态
+        connect(menu, &QMenu::aboutToShow, act_startup, [act_startup] {
+            act_startup->setChecked(Startup::isOn()); // 10-30ms
+
+            static auto text = act_startup->text();
+            if (IsUserAnAdmin() && !Startup::isOn_reg())
+                act_startup->setText(text + "🔑️"); // 意味着接下来的操作需要管理员权限（操作schtask）
+            else
+                act_startup->setText(text);
+        });
+
+        // menu_monitor
+        {
             auto* monitorGroup = new QActionGroup(menu_monitor);
             monitorGroup->addAction("Primary Monitor")->setData(PrimaryMonitor);
             monitorGroup->addAction("Mouse Monitor")->setData(MouseMonitor);
@@ -86,7 +101,7 @@ private:
             });
 
             connect(monitorGroup, &QActionGroup::triggered, this, [this](QAction* act) {
-                DisplayMonitor monitor = (DisplayMonitor) act->data().toInt();
+                auto monitor = static_cast<DisplayMonitor>(act->data().toInt());
                 cfg.setDisplayMonitor(monitor);
                 this->showMessage("Display Monitor Changed", act->text());
             });
