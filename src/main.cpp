@@ -65,8 +65,11 @@ int main(int argc, char* argv[]) {
             winSwitcher->notifyForegroundChanged(hwnd, Widget::WinEvent);
             auto className = Util::getClassName(hwnd);
             // ForegroundStaging貌似是辅助过渡动画
-            if (className == "ForegroundStaging" || className == "XamlExplorerHostIslandWindow") { // 任务切换窗口
-                qDebug() << "任务切换 detected!";
+            if (hwnd == GetForegroundWindow() &&
+                (className == "ForegroundStaging" /*|| className == "XamlExplorerHostIslandWindow"*/)) { // 任务切换窗口
+                // 顺序是ForegroundStaging -> XamlExplorerHostIslandWindow，不需要都检测，否则会重复
+                // 且：XamlExplorerHostIslandWindow 会导致误检测（某些系统版本，任务栏app窗口>1时，点击窗口）
+                qDebug() << "任务切换 detected!" << className;
                 int t = 0;
                 do {
                     // 等待Windows的任务切换窗口完全获取焦点（显示），再弹出本程序抢夺焦点，否则可能会被抢回去，导致需要retry
