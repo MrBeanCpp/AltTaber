@@ -65,7 +65,8 @@ int main(int argc, char* argv[]) {
             winSwitcher->notifyForegroundChanged(hwnd, Widget::WinEvent);
             auto className = Util::getClassName(hwnd);
             // ForegroundStaging貌似是辅助过渡动画
-            if (hwnd == GetForegroundWindow() &&
+            // 检测 Alt 按下，防止误判 Win+Tab (任务视图)
+            if (hwnd == GetForegroundWindow() && Util::isKeyPressed(VK_MENU) &&
                 (className == "ForegroundStaging" /*|| className == "XamlExplorerHostIslandWindow"*/)) { // 任务切换窗口
                 // 顺序是ForegroundStaging -> XamlExplorerHostIslandWindow，不需要都检测，否则会重复
                 // 且：XamlExplorerHostIslandWindow 会导致误检测（某些系统版本，任务栏app窗口>1时，点击窗口）
