@@ -14,6 +14,7 @@
 #include <atlbase.h>
 #include <tlhelp32.h>
 #include <QFileIconProvider>
+#include <qoperatingsystemversion.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -43,7 +44,15 @@ namespace Util {
     // slow
     QString getProcessPath(DWORD pid) {
         QString path;
-        HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+        static const bool isWin10orHigher = (QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows10);
+        HANDLE hProcess = nullptr;
+        if (isWin10orHigher) // LIMIT权限基本可以open所有类型窗口
+            hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        else // ↓该权限下，管理员权限窗口（如任务管理器）open失败; 1Password 虽然是非管理员窗口，但是安全系数较高，也open失败
+            hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+
+        // for `GetModuleFileNameEx`, 句柄必须具有 PROCESS_QUERY_INFORMATION 和 PROCESS_VM_READ 访问权限
+        // but, Windows 10 及更高版本、Windows Server 2016 及更高版本：如果 hModule 参数为 NULL，则句柄只需要 PROCESS_QUERY_LIMITED_INFORMATION 访问权限
         if (hProcess) {
             TCHAR processName[MAX_PATH];
             // https://www.cnblogs.com/mooooonlight/p/14491399.html

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <QTimer>
 #include <QMessageBox>
+#include <qoperatingsystemversion.h>
 #include <QStyleHints>
 #include "UpdateDialog.h"
 #include "widget.h"
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
     qDebug() << qt_error_string(S_OK); // just for fun
 
     qDebug() << "isUserAdmin" << IsUserAnAdmin();
+    qDebug() << "System Version" << QOperatingSystemVersion::current().version();
     sysTray.show(); // show之后才能使用系统通知
     UpdateDialog::verifyUpdate(a); // 验证更新
 
