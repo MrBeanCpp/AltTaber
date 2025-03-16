@@ -13,6 +13,7 @@
 #include <propkey.h>
 #include <atlbase.h>
 #include <tlhelp32.h>
+#include <shlobj_core.h>
 #include <QFileIconProvider>
 #include <qoperatingsystemversion.h>
 
@@ -39,6 +40,44 @@ namespace Util {
         BOOL isCloaked = false; // ! bool 会造成参数错误，导致本函数恒定false; bool & BOOL字节数不同，调试模式下 LLDB一栏会报错！ 非调试看不出来
         auto rt = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &isCloaked, sizeof(isCloaked));
         return rt == S_OK && isCloaked;
+    }
+
+    bool isProcessElevated(HANDLE hProcess) {
+        HANDLE hToken = nullptr;
+        if (!OpenProcessToken(hProcess, TOKEN_QUERY, &hToken)) {
+            qDebug() << "OpenProcessToken failed" << GetLastError();
+            return false;
+        }
+
+        TOKEN_ELEVATION elevation;
+        DWORD size;
+        bool isElevated = false;
+
+        if (GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &size)) {
+            isElevated = (elevation.TokenIsElevated != 0);
+        } else {
+            qDebug() << "GetTokenInformation failed" << GetLastError();
+        }
+
+        CloseHandle(hToken);
+        return isElevated;
+    }
+
+    /// 判断窗口是否处于提升状态（管理员权限），有趣的是"任务管理器"是`Elevated`的，但是无需经过UAC确认，可能系统应用自动提升
+    bool isWindowElevated(HWND hwnd) {
+        DWORD pid;
+        GetWindowThreadProcessId(hwnd, &pid);
+
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (hProcess == nullptr) {
+            qDebug() << "OpenProcess failed" << GetLastError();
+            return false;
+        }
+
+        bool isAdmin = isProcessElevated(hProcess);
+
+        CloseHandle(hProcess);
+        return isAdmin;
     }
 
     // slow
@@ -270,11 +309,23 @@ namespace Util {
     // about 2ms
     QList<HWND> listValidWindows() {
         qDebug() << "#List Valid Windows";
+        static const bool isUserAdmin = IsUserAnAdmin(); // 和 isProcessElevated(GetCurrentProcess()) 好像没区别？
         using namespace AppUtil;
         QList<HWND> list;
         const auto winList = Util::enumWindows();
         for (auto hwnd: winList) {
             if (!hwnd) continue;
+            // 忽略权限高于自身的窗口
+            if (!isUserAdmin && isWindowElevated(hwnd)) {
+                // 有什么必要忽略呢？ 采用LIMITED权限OpenProcess之后，（低权限模式下）确实能读取更多窗口的exe路径了（例如管理员窗口）
+                // 是好事吗？ No, 只是泡沫而已；看起来可以显示更多窗口，实则无法控制：ShowWindow()无法对更高权限窗口生效
+                // PostMessage可以，但是无法使用NOACTIVE版本，窗口必被激活
+                // 此时由于权限不足，Hook失效，无法进一步检测 Alt or 任务栏滚轮，导致非常鸡肋
+                // https://stackoverflow.com/questions/13468331/showwindow-function-doesnt-work-when-target-application-is-run-as-administrator
+                qDebug() << "#ignore elevated:" << hwnd << getWindowTitle(hwnd);
+                continue;
+            }
+
             auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
             if (className == AppFrameWindowClass) { // UWP的父窗口

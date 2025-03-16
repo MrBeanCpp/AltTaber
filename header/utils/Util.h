@@ -10,6 +10,7 @@
 namespace Util {
     QString getWindowTitle(HWND hwnd);
     QString getClassName(HWND hwnd);
+    bool isWindowElevated(HWND hwnd);
     QString getWindowProcessPath(HWND hwnd);
     QList<QString> getChildProcessPaths(const QString& exePath);
     QString getFileDescription(const QString& path);
