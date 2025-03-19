@@ -326,6 +326,7 @@ namespace Util {
                 continue;
             }
 
+            /* fix `isWindowCloaked()`之后，以下代码无用
             auto className = Util::getClassName(hwnd);
             // ref: https://blog.csdn.net/qq_59075481/article/details/139574981
             if (className == AppFrameWindowClass) { // UWP的父窗口
@@ -344,14 +345,15 @@ namespace Util {
                 if (!coreChild) {
                     // 对于正常UWP窗口，Core只在Frame最小化时脱离AppFrame，变成top-level
                     // 如果Core是顶层，且AppFrame不是最小化，那么就是非正常窗口，舍弃
+                    // ！！有个例外，对于"便笺"不适用，会误判：便笺的Core的标题和Frame不同，不是"便笺"是"Title"，同时存在另一个"便签"Core (顶层)
                     if (!IsIconic(hwnd) || !FindWindowW(LPCWSTR(AppCoreWindowClass.utf16()), LPCWSTR(title.utf16()))) {
                         // 本来可以用于排除不可见的"设置" & "电影和电视" & "Realtek Audio Console"
-                        // 但是fix `isWindowCloaked()`之后，已经可以被其正确过滤了...
+                        // ！！但是fix `isWindowCloaked()`之后，已经可以被其正确过滤了...
                         qDebug() << "#ignore UWP:" << title << hwnd;
                         continue;
                     }
                 }
-            }
+            }*/
 
             list << hwnd;
         }
