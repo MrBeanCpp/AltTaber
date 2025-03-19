@@ -16,6 +16,9 @@
 #include <shlobj_core.h>
 #include <QFileIconProvider>
 #include <qoperatingsystemversion.h>
+#include <winrt/Windows.Management.Deployment.h>
+#include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.ApplicationModel.h>
 
 namespace Util {
     QString getWindowTitle(HWND hwnd) {
@@ -456,6 +459,26 @@ namespace Util {
         if (QFile::exists(QFileInfo(path).dir().filePath(AppUtil::AppManifest))) {
             qDebug() << "Detect AppxManifest.xml, maybe UWP" << path;
             icon = AppUtil::getAppIcon(path);
+        } else if (path.contains("\\WindowsApps\\", Qt::CaseInsensitive) ||
+                   path.contains("\\SystemApps\\", Qt::CaseInsensitive)) {
+            // 少部分情况下，AppxManifest.xml不在exe同目录下，例如："MSI Center"，此时需要枚举所有UWP安装目录
+            // 通过"WindowsApps" & "SystemApps"猜测，减少每次枚举的开销 // 不检测"C:\\Program Files\\WindowsApps"是防止用户移动目录
+            // 不缓存是为了防止新安装的UWP无法更新
+            qDebug() << "Guess from path, maybe UWP" << path;
+
+            using namespace winrt;
+            using namespace Windows::Management::Deployment;
+            // init_apartment(apartment_type::single_threaded); // Qt 内部已经初始化了
+
+            PackageManager packageManager;
+            auto packages = packageManager.FindPackagesForUser(L""); // "" means current user
+            for (const auto& package: packages) {
+                const auto installDir = QString::fromStdWString(package.InstalledPath().c_str());
+                if (path.startsWith(installDir, Qt::CaseInsensitive)) {
+                    icon = AppUtil::getAppIcon(installDir + "\\fake.exe");
+                    break;
+                }
+            }
         }
         if (icon.isNull()) { // 兜底
             icon = getJumboIcon(path);
