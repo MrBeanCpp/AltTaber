@@ -207,6 +207,7 @@ namespace Util {
         if (force) { // 强制措施(hack)
             // 如果本进程没有前台窗口，则Windows不允许抢占焦点，此时需要hack技巧
             // 此处模拟任意按键均可（除了LAlt，因为我们正按着）; 推测是满足了：调用进程收到了最后一个输入事件
+            // !!但是如果模拟RAlt的话，会导致切换后目标窗口的Menu处于焦点状态，导致滚轮和键盘操作不符预期，还会导致于Alt相关快捷键意外触发(Alt+Space)
             // doc: https://learn.microsoft.com/zh-cn/windows/win32/api/winuser/nf-winuser-setforegroundwindow?redirectedfrom=MSDN
             // ref: https://github.com/stianhoiland/cmdtab/blob/746c41226cdd820c26eadf00eb86b45896dc1dcd/src/cmdtab.c#L144
             // ref: https://stackoverflow.com/questions/10740346/setforegroundwindow-only-working-while-visual-studio-is-open
@@ -216,9 +217,13 @@ namespace Util {
             // 还有一种比较常见的方法是：AttachThreadInput
             // 另一个技巧是： AllocConsole ?
             // ref: https://github.com/sigoden/window-switcher/blob/0c99b27823b4e6abd21e73f505a7c2cd8c21f59b/src/utils/window.rs#L122
-            keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | 0, 0); // EXTENDEDKEY + MENU == RAlt
+
+            // Hack: 这里我们模拟一个空的键盘输入即可，目的是让本进程成为“最近产生输入的进程”，以获取设置前台窗口的权限
+            // ref: https://github.com/stianhoiland/cmdtab/blob/d33730f52af40f46545b086953158a5382f2a05b/src/cmdtab.c#L488
+            // ref: https://github.com/microsoft/PowerToys/blob/7d0304fd06939d9f552e75be9c830db22f8ff9e2/src/modules/fancyzones/FancyZonesLib/util.cpp#L376
+            INPUT input = {.type = INPUT_KEYBOARD};
+            SendInput(1, &input, sizeof(INPUT));
             SetForegroundWindow(hwnd);
-            keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0); // 貌似只保留UP也可以
         } else {
             // 如果本进程has前台窗口，则可以随意调用该函数转移焦点
             SetForegroundWindow(hwnd);
