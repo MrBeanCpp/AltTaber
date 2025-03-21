@@ -240,7 +240,7 @@ QList<WindowGroup> Widget::prepareWindowGroupList() {
         auto& winGroup = winGroupMap[path];
         if (winGroup.exePath.isEmpty()) { // QIcon::isNull 判断可能不太准（例如空图标）
             winGroup.exePath = path;
-            auto icon = Util::getCachedIcon(path); // TODO background thread
+            auto icon = Util::getCachedIcon(path, hwnd); // TODO background thread
             if (path.endsWith("QQ\\bin\\QQ.exe", Qt::CaseInsensitive)) { // draw chat partner for classical QQ
                 QPixmap overlay = Util::getWindowIcon(hwnd);
                 const auto iSize = lw->iconSize();

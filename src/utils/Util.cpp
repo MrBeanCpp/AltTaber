@@ -1,5 +1,6 @@
 ﻿#include <QList>
 #include "utils/Util.h"
+#include <appmodel.h>
 #include "utils/AppUtil.h"
 #include <QDebug>
 #include <psapi.h>
@@ -12,6 +13,7 @@
 #include <QPainter>
 #include <propkey.h>
 #include <atlbase.h>
+#include <minappmodel.h>
 #include <tlhelp32.h>
 #include <shlobj_core.h>
 #include <QFileIconProvider>
@@ -450,8 +452,56 @@ namespace Util {
         return true;
     }
 
-    /// Cached Icon, including UWP
-    QIcon getCachedIcon(const QString& path) {
+    /// 通过窗口句柄获取UWP安装目录，如果该窗口不是UWP应用，则返回""
+    QString getUwpInstallDirFromHwnd(HWND hwnd) {
+        if (AppUtil::isAppFrameWindow(hwnd))
+            hwnd = AppUtil::getAppCoreWindow(hwnd); // AppCore 用于获取exe路径
+        // 仅通过`isAppFrameWindow(hwnd)`来判断UWP可能不够准确
+
+        DWORD pid;
+        GetWindowThreadProcessId(hwnd, &pid);
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (!hProcess) {
+            qWarning() << "OpenProcess failed" << GetLastError();
+            return {};
+        }
+
+        WCHAR packageFullName[PACKAGE_FULL_NAME_MAX_LENGTH + 1] = {0};
+        UINT32 length = _countof(packageFullName);
+        if (auto result = GetPackageFullName(hProcess, &length, packageFullName); result != ERROR_SUCCESS) {
+            if (result == ERROR_INSUFFICIENT_BUFFER)
+                qWarning() << "Buffer too small for packageFullName";
+            CloseHandle(hProcess);
+            return {}; // not UWP, no packageFullName
+        }
+        CloseHandle(hProcess);
+
+        // 其实`GetPackagePathByFullName`也可以，就是想随便用一下`WinRT` Just
+        using namespace winrt;
+        using namespace Windows::Management::Deployment;
+        // init_apartment(apartment_type::single_threaded); // Qt 内部已经初始化了
+
+        try {
+            PackageManager packageManager;
+            // `FindPackage`需要管理员权限，而`FindPackageForUser(L"", ...)` (当前用户)不需要
+            auto package = packageManager.FindPackageForUser(L"", hstring(packageFullName));
+            if (!package) {
+                qDebug() << "Package not found?";
+                return {};
+            }
+            return QString::fromStdWString(package.InstalledPath().c_str());
+        } catch (const hresult_error& ex) {
+            qWarning() << "PackageManager Error:" << QString::fromStdWString(ex.message().c_str());
+        }
+
+        return {};
+    }
+
+    /// Cached Icon, including UWP<br>
+    /// `hwnd` is for getting UWP package full name<br>
+    /// 如果想要直接通过exe path获取icon，就只能通过`FindPackagesForUser`枚举不太优雅<br>
+    /// 让`hwnd`成为唯一参数也可以，就是要重新获取一次 path from hwnd，效率较低
+    QIcon getCachedIcon(const QString& path, HWND hwnd) {
         static QHash<QString, QIcon> IconCache;
         if (auto icon = IconCache.value(path); !icon.isNull())
             return icon;
@@ -459,33 +509,14 @@ namespace Util {
         QElapsedTimer t;
         t.start();
         QIcon icon;
-        // 包含AppxManifest.xml的目录，很可能是UWP
-        // 不太好通过exe是否包含图标判断UWP，因为SystemSettings.exe居然包含图标！
-        if (QFile::exists(QFileInfo(path).dir().filePath(AppUtil::AppManifest))) {
-            qDebug() << "Detect AppxManifest.xml, maybe UWP" << path;
-            icon = AppUtil::getAppIcon(path);
-        } else if (path.contains("\\WindowsApps\\", Qt::CaseInsensitive) ||
-                   path.contains("\\SystemApps\\", Qt::CaseInsensitive)) {
-            // 少部分情况下，AppxManifest.xml不在exe同目录下，例如："MSI Center"，此时需要枚举所有UWP安装目录
-            // 通过"WindowsApps" & "SystemApps"猜测，减少每次枚举的开销 // 不检测"C:\\Program Files\\WindowsApps"是防止用户移动目录
-            // 不缓存是为了防止新安装的UWP无法更新
-            qDebug() << "Guess from path, maybe UWP" << path;
 
-            using namespace winrt;
-            using namespace Windows::Management::Deployment;
-            // init_apartment(apartment_type::single_threaded); // Qt 内部已经初始化了
-
-            PackageManager packageManager;
-            auto packages = packageManager.FindPackagesForUser(L""); // "" means current user
-            for (const auto& package: packages) {
-                const auto installDir = QString::fromStdWString(package.InstalledPath().c_str());
-                if (path.startsWith(installDir, Qt::CaseInsensitive)) {
-                    icon = AppUtil::getAppIcon(installDir + "\\fake.exe");
-                    break;
-                }
-            }
-        }
-        if (icon.isNull()) { // 兜底
+        // 1.不太好通过exe是否包含图标判断UWP，因为SystemSettings.exe居然包含图标！
+        // 2.AppxManifest.xml 和 exe不一定在同目录，如："MSI Center" "Notepad"，通过`FindPackagesForUser`枚举不太优雅
+        // 3.后来发现可以通过pid获取packageFullName，进而获取Package对象，得到安装目录
+        if (auto uwpDir = getUwpInstallDirFromHwnd(hwnd); !uwpDir.isEmpty()) { // UWP (MS Store App)
+            qDebug() << "Detect UWP" << path;
+            icon = AppUtil::getAppIcon(uwpDir + "\\fake.exe");
+        } else { // win32 desktop app
             icon = getJumboIcon(path);
             if (isBottomRightTransparent(icon)) {
                 // 对于不包含大图标的exe，例如[Follower]获取64x64的图标，但只有左上角有8x8图标，其余透明）
