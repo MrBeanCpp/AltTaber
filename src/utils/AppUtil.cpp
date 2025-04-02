@@ -310,19 +310,21 @@ namespace AppUtil {
     }
 
     /// Warning: 对于没有加入StartMenu且不是UWP的应用，fail, like `Rizonesoft.Notepad3`<br>
-    /// 还有更奇怪的，Clash for Windows, 在getStartAppList()中的AppID是绝对路径，但是AutoAnimation获取的是"com.lbyczf.clashwin"对不上<br>
-    /// So: 如果AppID无匹配，则转向Name匹配
+    /// 还有更奇怪的，Clash for Windows, 在getStartAppList()中的AppID是绝对路径，但是AutoAnimation获取的是"com.lbyczf.clashwin"对不上. Steam, Dingdingも<br>
+    /// So: 如果AppID无匹配，则转向Name匹配<br>
+    /// Name也分为多种情况：若app加入StartMenu，则有优先使用该名称（快捷方式）(e.g. Follower)；否则使用文件描述
     QString getExePathFromAppIdOrName(const QString& appid, const QString& appName) {
-        static QHash<QString, QString> appid2Path;
-        static QHash<QString, QString> name2Path;
+        static QHash<QString, QString> app2Path; // appid or name
+        static QHash<QString, QString> desc2Path; // description
         static auto buildStartAppMaps = []() { // cache, 耗时
+            app2Path.clear();
             const auto list = getStartAppList(); // build from Start Apps
             for (const auto& [name, appId, exePath]: list) {
-                appid2Path.insert(appId, exePath);
-                name2Path.insert(name, exePath);
+                app2Path.insert(appId, exePath);
+                app2Path.insert(name, exePath);
             }
         };
-        if (appid2Path.isEmpty()) // init & cache
+        if (app2Path.isEmpty()) // init & cache
             buildStartAppMaps();
 
         if (appid.isEmpty()) return {};
@@ -333,18 +335,42 @@ namespace AppUtil {
         static QStringList BlackList;
         if (BlackList.contains(appid)) return {};
 
-        if (auto exe = appid2Path.value(appid); !exe.isEmpty())
-            return exe;
-        if (auto exe = name2Path.value(appName); !exe.isEmpty())
-            return exe;
+        int retry = 1;
+        do {
+            if (auto exe = app2Path.value(appid); !exe.isEmpty()) { // 这里不判断exe是否属于`ValidWindows`，父子进程关系是下一个阶段的问题
+                qDebug() << "Get path by AppId:" << appid;
+                return exe;
+            }
+            if (auto exe = app2Path.value(appName); !exe.isEmpty()) {
+                qDebug() << "Get path by name:" << appName;
+                return exe;
+            }
+            if (auto exe = desc2Path.value(appName); !exe.isEmpty()) {
+                qDebug() << "Get path by description:" << appName;
+                return exe;
+            }
 
-        buildStartAppMaps(); // rebuild
-        qDebug() << "Not Found. Rebuild AppId2ExePathMap";
+            qDebug() << "Not Found. Try list windows' description";
+            QSet<QString> paths;
+            const auto windows = Util::listValidWindows();
+            for (auto hwnd: windows) {
+                QString path = Util::getWindowProcessPath(hwnd);
+                paths.insert(path);
+            }
+            for (const auto& path: paths) {
+                QString description = Util::getFileDescription(path); // slow
+                desc2Path.insert(description, path);
+                if (description == appName) { // 尝试通过文件描述匹配不在StartMenu的应用
+                    qDebug() << "Get path by description_:" << appName;
+                    return path;
+                }
+            }
 
-        if (auto exe = appid2Path.value(appid); !exe.isEmpty())
-            return exe;
-        if (auto exe = name2Path.value(appName); !exe.isEmpty())
-            return exe;
+            if (retry-- <= 0) break;
+
+            buildStartAppMaps(); // rebuild only once
+            qDebug() << "Not Found. Rebuild App2ExePathMap";
+        } while (true);
 
         // add to blacklist, if also failed after rebuild
         qWarning() << "Failed to find exe path for appid:" << appid;
